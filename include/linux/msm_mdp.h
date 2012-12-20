@@ -1,7 +1,7 @@
 /* include/linux/msm_mdp.h
  *
  * Copyright (C) 2007 Google Incorporated
- * Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -41,31 +41,61 @@
 #define MSMFB_OVERLAY_GET      _IOR(MSMFB_IOCTL_MAGIC, 140, \
 						struct mdp_overlay)
 #define MSMFB_OVERLAY_PLAY_ENABLE     _IOW(MSMFB_IOCTL_MAGIC, 141, unsigned int)
-#define MSMFB_DTV_LCDC_ENABLE     _IOW(MSMFB_IOCTL_MAGIC, 142, unsigned int)
-#define MSMFB_OVERLAY_REFRESH     _IOW(MSMFB_IOCTL_MAGIC, 143, unsigned int)
-#define MSMFB_MIXER_INFO	_IOWR(MSMFB_IOCTL_MAGIC, 148, \
+#define MSMFB_OVERLAY_BLT       _IOWR(MSMFB_IOCTL_MAGIC, 142, \
+						struct msmfb_overlay_blt)
+#define MSMFB_OVERLAY_BLT_OFFSET     _IOW(MSMFB_IOCTL_MAGIC, 143, unsigned int)
+#define MSMFB_HISTOGRAM_START	_IO(MSMFB_IOCTL_MAGIC, 144)
+#define MSMFB_HISTOGRAM_STOP	_IO(MSMFB_IOCTL_MAGIC, 145)
+#define MSMFB_NOTIFY_UPDATE	_IOW(MSMFB_IOCTL_MAGIC, 146, unsigned int)
+
+#define MSMFB_OVERLAY_3D       _IOWR(MSMFB_IOCTL_MAGIC, 147, \
+						struct msmfb_overlay_3d)
+
+#define MSMFB_DTV_LCDC_ENABLE     _IOW(MSMFB_IOCTL_MAGIC, 148, unsigned int)
+#define MSMFB_OVERLAY_REFRESH     _IOW(MSMFB_IOCTL_MAGIC, 149, unsigned int)
+#define MSMFB_MIXER_INFO       _IOWR(MSMFB_IOCTL_MAGIC, 150, \
 						struct msmfb_mixer_info_req)
-#define MSMFB_OVERLAY_PLAY_WAIT _IOWR(MSMFB_IOCTL_MAGIC, 149, \
+#define MSMFB_OVERLAY_PLAY_WAIT _IOW(MSMFB_IOCTL_MAGIC, 151, \
 						struct msmfb_overlay_data)
+#define MSMFB_OVERLAY_VSYNC_CTRL  _IOW(MSMFB_IOCTL_MAGIC, 160, unsigned int)
+#define MSMFB_OVERLAY_COMMIT      _IOW(MSMFB_IOCTL_MAGIC, 163, unsigned int)
+
+#define FB_TYPE_3D_PANEL 0x10101010
 
 #define MDP_IMGTYPE2_START 0x10000
+
+enum {
+	NOTIFY_UPDATE_START,
+	NOTIFY_UPDATE_STOP,
+};
 
 enum {
 	MDP_RGB_565,      /* RGB 565 planer */
 	MDP_XRGB_8888,    /* RGB 888 padded */
 	MDP_Y_CBCR_H2V2,  /* Y and CbCr, pseudo planer w/ Cb is in MSB */
+	MDP_Y_CBCR_H2V2_ADRENO,
 	MDP_ARGB_8888,    /* ARGB 888 */
 	MDP_RGB_888,      /* RGB 888 planer */
 	MDP_Y_CRCB_H2V2,  /* Y and CrCb, pseudo planer w/ Cr is in MSB */
 	MDP_YCRYCB_H2V1,  /* YCrYCb interleave */
 	MDP_Y_CRCB_H2V1,  /* Y and CrCb, pseduo planer w/ Cr is in MSB */
 	MDP_Y_CBCR_H2V1,   /* Y and CrCb, pseduo planer w/ Cr is in MSB */
+	MDP_Y_CRCB_H1V2,
+	MDP_Y_CBCR_H1V2,
 	MDP_RGBA_8888,    /* ARGB 888 */
 	MDP_BGRA_8888,	  /* ABGR 888 */
 	MDP_RGBX_8888,	  /* RGBX 888 */
 	MDP_Y_CRCB_H2V2_TILE,  /* Y and CrCb, pseudo planer tile */
 	MDP_Y_CBCR_H2V2_TILE,  /* Y and CbCr, pseudo planer tile */
+	MDP_Y_CR_CB_H2V2,  /* Y, Cr and Cb, planar */
+	MDP_Y_CR_CB_GH2V2,  /* Y, Cr and Cb, planar aligned to Android YV12 */
+	MDP_Y_CB_CR_H2V2,  /* Y, Cb and Cr, planar */
+	MDP_Y_CRCB_H1V1,  /* Y and CrCb, pseduo planer w/ Cr is in MSB */
+	MDP_Y_CBCR_H1V1,  /* Y and CbCr, pseduo planer w/ Cb is in MSB */
+	MDP_YCRCB_H1V1,   /* YCrCb interleave */
+	MDP_YCBCR_H1V1,   /* YCbCr interleave */
 	MDP_IMGTYPE_LIMIT,
+	MDP_RGB_BORDERFILL,	/* border fill pipe */
 	MDP_BGR_565 = MDP_IMGTYPE2_START,      /* BGR 565 planer */
 	MDP_FB_FORMAT,    /* framebuffer format */
 	MDP_IMGTYPE_LIMIT2 /* Non valid image type after this enum */
@@ -74,6 +104,14 @@ enum {
 enum {
 	PMEM_IMG,
 	FB_IMG,
+};
+
+enum {
+	HSIC_HUE = 0,
+	HSIC_SAT,
+	HSIC_INT,
+	HSIC_CON,
+	NUM_HSIC_PARAM,
 };
 
 /* mdp_blit_req flag values */
@@ -96,10 +134,19 @@ enum {
 	(MDP_NO_DMA_BARRIER_START | MDP_NO_DMA_BARRIER_END)
 #define MDP_BLIT_SRC_GEM                0x04000000
 #define MDP_BLIT_DST_GEM                0x02000000
+#define MDP_BLIT_NON_CACHED		0x01000000
+#define MDP_OV_PIPE_SHARE		0x00800000
+#define MDP_DEINTERLACE_ODD		0x00400000
+#define MDP_OV_PLAY_NOWAIT		0x00200000
+#define MDP_SOURCE_ROTATED_90		0x00100000
+#define MDP_DPP_HSIC			0x00080000
+#define MDP_BACKEND_COMPOSITION		0x00040000
+#define MDP_BORDERFILL_SUPPORTED	0x00010000
+#define MDP_SECURE_OVERLAY_SESSION      0x00008000
+#define MDP_MEMORY_ID_TYPE_FB		0x00001000
+
 #define MDP_TRANSP_NOP 0xffffffff
 #define MDP_ALPHA_NOP 0xff
-#define MDP_SOURCE_ROTATED_90		0x00100000
-#define MDP_OV_PLAY_NOWAIT              0x00200000
 
 #define MDP_FB_PAGE_PROTECTION_NONCACHED         (0)
 #define MDP_FB_PAGE_PROTECTION_WRITECOMBINE      (1)
@@ -141,6 +188,15 @@ struct mdp_ccs {
 	int direction;			/* MDP_CCS_RGB2YUV or YUV2RGB */
 	uint16_t ccs[MDP_CCS_SIZE];	/* 3x3 color coefficients */
 	uint16_t bv[MDP_BV_SIZE];	/* 1x3 bias vector */
+};
+
+struct mdp_csc {
+	int id;
+	uint32_t csc_mv[9];
+	uint32_t csc_pre_bv[3];
+	uint32_t csc_post_bv[3];
+	uint32_t csc_pre_lv[6];
+	uint32_t csc_post_lv[6];
 };
 
 /* The version of the mdp_blit_req structure so that
@@ -200,6 +256,21 @@ struct mdp_overlay {
 	uint32_t flags;
 	uint32_t id;
 	uint32_t user_data[8];
+};
+
+struct msmfb_overlay_3d {
+	uint32_t is_3d;
+	uint32_t width;
+	uint32_t height;
+};
+
+
+struct msmfb_overlay_blt {
+	uint32_t enable;
+	uint32_t offset;
+	uint32_t width;
+	uint32_t height;
+	uint32_t bpp;
 };
 
 struct mdp_histogram {
