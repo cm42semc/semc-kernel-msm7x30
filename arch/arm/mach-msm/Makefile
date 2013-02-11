@@ -198,4 +198,6 @@ ifdef CONFIG_ARCH_MSM7X30
 	obj-$(CONFIG_SIMPLE_REMOTE_PLATFORM) += simple_remote_msm7x30_pf.o
 endif
 
+#obj-$(CONFIG_PMIC_TIME) += pmic_time.o
+
 obj-$(CONFIG_SEMC_MOGAMI_FELICA_SUPPORT) += semc_mogami_felica.o

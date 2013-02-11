@@ -34,14 +34,14 @@ static struct spi_device *lcdc_spi_client;
 #endif
 static int lcdc_sharp_panel_off(struct platform_device *pdev);
 
+#define BL_MAX		16
+
 #ifdef CONFIG_PMIC8058_PWM
 static struct pwm_device *bl_pwm;
 
-#define PWM_PERIOD	1000    /* us, period of 1Khz */
+#define PWM_PERIOD	1000	/* us, period of 1Khz */
 #define DUTY_LEVEL	(PWM_PERIOD / BL_MAX)
 #endif
-
-#define BL_MAX		16
 
 #ifndef CONFIG_SPI_QSD
 static int spi_cs;
@@ -281,7 +281,7 @@ static void lcdc_sharp_panel_set_backlight(struct msm_fb_data_type *mfd)
 #endif
 }
 
-static int __init sharp_probe(struct platform_device *pdev)
+static int __devinit sharp_probe(struct platform_device *pdev)
 {
 	if (pdev->id == 0) {
 		lcdc_sharp_pdata = pdev->dev.platform_data;
