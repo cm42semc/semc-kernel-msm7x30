@@ -71,7 +71,6 @@
 #include "devices.h"
 #include "timer.h"
 #include "socinfo.h"
-#include "cpufreq.h"
 #include "board-semc_mogami-keypad.h"
 #include "board-semc_mogami-gpio.h"
 #include <linux/usb/android.h>
@@ -294,55 +293,6 @@ static void vreg_helper_off(const char *pzName)
 	printk(KERN_INFO "Disabled VREG \"%s\"\n", pzName);
 }
 
-static ssize_t hw_id_get_mask(struct class *class, char *buf)
-{
-
-	char hwid;
-	unsigned int i;
-	unsigned cfg;
-	int rc;
-	for (hwid = i = 0; i < ARRAY_SIZE(hw_id_gpios); i++) {
-		cfg = GPIO_CFG(hw_id_gpios[i], 0, GPIO_CFG_INPUT,
-				GPIO_CFG_NO_PULL, GPIO_CFG_2MA);
-		rc = gpio_tlmm_config(cfg, GPIO_CFG_ENABLE);
-		if (rc) {
-			printk(KERN_ERR
-				"%s: Enabling of GPIO failed. "
-				"gpio_tlmm_config(%#x, enable)=%d\n",
-				__func__, cfg, rc);
-			return rc;
-		}
-		hwid |= (gpio_get_value(hw_id_gpios[i]) & 1) << i;
-		rc = gpio_tlmm_config(cfg, GPIO_CFG_DISABLE);
-		if (rc) {
-			printk(KERN_INFO
-				"%s: Disabling of GPIO failed. "
-				"The got GPIO value is valid. "
-				"gpio_tlmm_config(%#x, disable)=%d\n",
-				__func__, cfg, rc);
-		}
-	}
-	printk(KERN_INFO "Board Mogami HW ID: 0x%02x\n", hwid);
-	return sprintf(buf, "0x%02x\n", hwid);
-}
-
-static CLASS_ATTR(hwid, 0444, hw_id_get_mask, NULL);
-static struct class hwid_class = {.name	= "hwid",};
-static void __init hw_id_class_init(void)
-{
-	int error;
-	error = class_register(&hwid_class);
-	if (error) {
-		printk(KERN_ERR "%s: class_register failed\n", __func__);
-		return;
-	}
-	error = class_create_file(&hwid_class, &class_attr_hwid);
-	if (error) {
-		printk(KERN_ERR "%s: class_create_file failed\n",
-		__func__);
-		class_unregister(&hwid_class);
-	}
-}
 
 #ifdef CONFIG_FPC_CONNECTOR_TEST
 extern struct fpc_connections_set fpc_connections_set;
@@ -645,18 +595,17 @@ static int pm8058_gpios_init(void)
 }
 
 static struct pm8058_gpio_platform_data pm8058_gpio_data = {
-	.gpio_base = PM8058_GPIO_PM_TO_SYS(0),
-	.irq_base = PM8058_GPIO_IRQ(PMIC8058_IRQ_BASE, 0),
-	.init = pm8058_gpios_init,
+	.gpio_base	= PM8058_GPIO_PM_TO_SYS(0),
+	.irq_base	= PM8058_GPIO_IRQ(PMIC8058_IRQ_BASE, 0),
+	.init		= pm8058_gpios_init,
 };
 
 static struct pm8058_gpio_platform_data pm8058_mpp_data = {
-	.gpio_base = PM8058_GPIO_PM_TO_SYS(PM8058_GPIOS),
-	.irq_base = PM8058_MPP_IRQ(PMIC8058_IRQ_BASE, 0),
+	.gpio_base	= PM8058_GPIO_PM_TO_SYS(PM8058_GPIOS),
+	.irq_base	= PM8058_MPP_IRQ(PMIC8058_IRQ_BASE, 0),
 };
 
 static struct mfd_cell pm8058_subdevs[] = {
-
 	[1].name = "pm8058-gpio",
 	[1].id = -1,
 	[1].platform_data = &pm8058_gpio_data,
@@ -697,7 +646,7 @@ static struct pm8058_platform_data pm8058_7x30_data = {
 
 static struct i2c_board_info pm8058_boardinfo[] __initdata = {
 	{
-		I2C_BOARD_INFO("pm8058-core", 0),
+		I2C_BOARD_INFO("pm8058-core", 0x55),
 		.irq = MSM_GPIO_TO_INT(PMIC_GPIO_INT),
 		.platform_data = &pm8058_7x30_data,
 	},
@@ -800,6 +749,9 @@ struct resource msm_camera_resources[] = {
 		.end	= INT_VFE,
 		.flags	= IORESOURCE_IRQ,
 	},
+	{
+		.flags  = IORESOURCE_DMA,
+	}
 };
 
 struct msm_camera_device_platform_data msm_camera_device_data = {
@@ -1151,19 +1103,14 @@ int  mi2s_unconfig_data_gpio(u32 direction, u8 sd_line_mask)
 
 	switch (direction) {
 	case DIR_TX:
-		msm_gpios_enable(mi2s_tx_data_lines_gpios, 1);
-		msm_gpios_free(mi2s_tx_data_lines_gpios, 1);
+		msm_gpios_disable_free(mi2s_tx_data_lines_gpios, 1);
 		break;
 	case DIR_RX:
 		i = 0;
-		while (sd_line_mask &&
-		      (i < ARRAY_SIZE(mi2s_rx_data_lines_gpios))) {
-			if (sd_line_mask & 0x1) {
-				msm_gpios_enable(
+		while (sd_line_mask) {
+			if (sd_line_mask & 0x1)
+				msm_gpios_disable_free(
 					mi2s_rx_data_lines_gpios + i , 1);
-				msm_gpios_free(
-					mi2s_rx_data_lines_gpios + i , 1);
-			}
 			sd_line_mask = sd_line_mask >> 1;
 			i++;
 		}
@@ -3040,8 +2987,13 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_NO_XO_SHUTDOWN].residency = 23740,
 
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE].supported = 1,
+#ifdef CONFIG_MSM_STANDALONE_POWER_COLLAPSE
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE].suspend_enabled = 0,
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE].idle_enabled = 1,
+#else /*CONFIG_MSM_STANDALONE_POWER_COLLAPSE*/
+	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE].suspend_enabled = 0,
+	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE].idle_enabled = 0,
+#endif /*CONFIG_MSM_STANDALONE_POWER_COLLAPSE*/
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE].latency = 500,
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE].residency = 6000,
 
@@ -3156,8 +3108,6 @@ static void msm_qsd_spi_gpio_release(void)
 
 static struct msm_spi_platform_data qsd_spi_pdata = {
 	.max_clock_speed = 26331429,
-	.clk_name = "spi_clk",
-	.pclk_name = "spi_pclk",
 	.gpio_config  = msm_qsd_spi_gpio_config,
 	.gpio_release = msm_qsd_spi_gpio_release,
 	.dma_config = msm_qsd_spi_dma_config,
@@ -3359,26 +3309,6 @@ static struct platform_device android_pmem_camera_device = {
        .dev = {.platform_data = &android_pmem_camera_pdata},
 };
 
-struct kgsl_cpufreq_voter {
-	int idle;
-	struct msm_cpufreq_voter voter;
-};
-
-static int kgsl_cpufreq_vote(struct msm_cpufreq_voter *v)
-{
-	struct kgsl_cpufreq_voter *kv =
-			container_of(v, struct kgsl_cpufreq_voter, voter);
-
-	return kv->idle ? MSM_CPUFREQ_IDLE : MSM_CPUFREQ_ACTIVE;
-}
-
-static struct kgsl_cpufreq_voter kgsl_cpufreq_voter = {
-	.idle = 1,
-	.voter = {
-		.vote = kgsl_cpufreq_vote,
-	},
-};
-
 struct resource kgsl_3d0_resources[] = {
 	{
 		.name  = KGSL_3D0_REG_MEMORY,
@@ -3400,17 +3330,14 @@ static struct kgsl_device_platform_data kgsl_3d0_pdata = {
 			{
 				.gpu_freq = 245760000,
 				.bus_freq = 192000000,
-				.io_fraction = 0,
 			},
 			{
 				.gpu_freq = 192000000,
-				.bus_freq = 152000000,
-				.io_fraction = 33,
+				.bus_freq = 153000000,
 			},
 			{
 				.gpu_freq = 192000000,
 				.bus_freq = 0,
-				.io_fraction = 100,
 			},
 		},
 		.init_level = 0,
@@ -3504,7 +3431,7 @@ static struct mddi_platform_data mddi_pdata = {
 int mdp_core_clk_rate_table[] = {
 	122880000,
 	122880000,
-	122880000,
+	192000000,
 	192000000,
 };
 static struct msm_panel_common_pdata mdp_pdata = {
@@ -4431,14 +4358,11 @@ static void __init msm7x30_init(void)
 	msm_snddev_init();
 	aux_pcm_gpio_init();
 #endif
-	hw_id_class_init();
 	shared_vreg_on();
 #ifdef CONFIG_TOUCHSCREEN_CY8CTMA300_SPI
 	cypress_touch_gpio_init();
 #endif /* CONFIG_TOUCHSCREEN_CY8CTMA300_SPI */
 	msm_init_pmic_vibrator();
-
-	msm_cpufreq_register_voter(&kgsl_cpufreq_voter.voter);
 
 	i2c_register_board_info(0, msm_i2c_board_info,
 			ARRAY_SIZE(msm_i2c_board_info));
@@ -4514,30 +4438,12 @@ static void __init msm7x30_allocate_memory_regions(void)
     2. Audio
        LPA HW can access android_pmem_audio_pdata during Idle-PC.
 */
-	size = pmem_sf_size;
-	if (size) {
-		addr = alloc_bootmem(size);
-		android_pmem_pdata.start = __pa(addr);
-		android_pmem_pdata.size = size;
-		pr_info("allocating %lu bytes at %p (%lx physical) for sf "
-			"pmem arena\n", size, addr, __pa(addr));
-	}
-
 	size = fb_size ? : MSM_FB_SIZE;
 	addr = alloc_bootmem(size);
 	msm_fb_resources[0].start = __pa(addr);
 	msm_fb_resources[0].end = msm_fb_resources[0].start + size - 1;
 	pr_info("allocating %lu bytes at %p (%lx physical) for fb\n",
 		size, addr, __pa(addr));
-
-	size = pmem_adsp_size;
-	if (size) {
-		addr = __alloc_bootmem(size, 8*1024, __pa(MAX_DMA_ADDRESS));
-		android_pmem_adsp_pdata.start = __pa(addr);
-		android_pmem_adsp_pdata.size = size;
-		pr_info("allocating %lu bytes at %p (%lx physical) for adsp "
-			"pmem arena\n", size, addr, __pa(addr));
-	}
 
 	size = pmem_kernel_ebi1_size;
 	if (size) {
@@ -4548,6 +4454,23 @@ static void __init msm7x30_allocate_memory_regions(void)
 			" ebi1 pmem arena\n", size, addr, __pa(addr));
 	}
 
+	size = pmem_sf_size;
+	if (size) {
+		addr = alloc_bootmem(size);
+		android_pmem_pdata.start = __pa(addr);
+		android_pmem_pdata.size = size;
+		pr_info("allocating %lu bytes at %p (%lx physical) for sf "
+			"pmem arena\n", size, addr, __pa(addr));
+	}
+
+	size = pmem_adsp_size;
+	if (size) {
+		addr = alloc_bootmem(size);
+		android_pmem_adsp_pdata.start = __pa(addr);
+		android_pmem_adsp_pdata.size = size;
+		pr_info("allocating %lu bytes at %p (%lx physical) for adsp "
+			"pmem arena\n", size, addr, __pa(addr));
+	}
 }
 
 static void __init msm7x30_map_io(void)
