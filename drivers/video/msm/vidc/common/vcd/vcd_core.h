@@ -75,11 +75,6 @@ enum vcd_command {
 	VCD_CMD_CLIENT_CLOSE
 };
 
-enum vcd_core_type {
-    VCD_CORE_1080P,
-    VCD_CORE_720P
-};
-
 struct vcd_cmd_q_element {
 	enum vcd_command pending_cmd;
 };
@@ -117,7 +112,6 @@ struct vcd_transc {
 	struct vcd_buffer_entry *ip_buf_entry;
 
 	s64 time_stamp;
-	u32 flags;
 	u32 ip_frm_tag;
 	enum vcd_frame frame;
 
@@ -172,7 +166,7 @@ struct vcd_clnt_status {
 	u32 int_field_cnt;
 	s64 first_ts;
 	s64 prev_ts;
-	u64 time_elapsed;
+	u32 time_elapsed;
 	struct vcd_frame_data eos_trig_ip_frm;
 	struct ddl_frame_data_tag eos_prev_op_frm;
 	u32 eos_prev_op_frm_status;

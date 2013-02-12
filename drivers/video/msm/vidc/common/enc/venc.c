@@ -163,22 +163,18 @@ static void vid_enc_input_frame_done(struct video_client_ctx *client_ctx,
 
 	venc_msg->venc_msg_info.statuscode = vid_enc_get_status(status);
 
-	venc_msg->venc_msg_info.msgcode = VEN_MSG_INPUT_BUFFER_DONE;
-
-	switch (event) {
-	case VCD_EVT_RESP_INPUT_DONE:
-	   DBG("Send INPUT_DON message to client = %p\n",
+	if (event == VCD_EVT_RESP_INPUT_DONE) {
+		venc_msg->venc_msg_info.msgcode =
+			VEN_MSG_INPUT_BUFFER_DONE;
+		DBG("Send INPUT_DON message to client = %p\n",
 			client_ctx);
-	   break;
-	case VCD_EVT_RESP_INPUT_FLUSHED:
+	} else if (event == VCD_EVT_RESP_INPUT_FLUSHED) {
+		venc_msg->venc_msg_info.msgcode = VEN_MSG_INPUT_BUFFER_DONE;
 		DBG("Send INPUT_FLUSHED message to client = %p\n",
 			client_ctx);
-	   break;
-	default:
-		ERR("vid_enc_input_frame_done(): invalid event type: "
-			"%d\n", event);
-		venc_msg->venc_msg_info.statuscode = VEN_S_EFATAL;
-	   break;
+	} else {
+		ERR("vid_enc_input_frame_done(): invalid event type\n");
+		return;
 	}
 
 	venc_msg->venc_msg_info.buf.clientdata =
@@ -216,21 +212,17 @@ static void vid_enc_output_frame_done(struct video_client_ctx *client_ctx,
 	}
 
 	venc_msg->venc_msg_info.statuscode = vid_enc_get_status(status);
-	venc_msg->venc_msg_info.msgcode = VEN_MSG_OUTPUT_BUFFER_DONE;
 
-	switch (event) {
-	case VCD_EVT_RESP_OUTPUT_DONE:
-	   DBG("Send INPUT_DON message to client = %p\n",
-			client_ctx);
-	   break;
-	case VCD_EVT_RESP_OUTPUT_FLUSHED:
-	   DBG("Send INPUT_FLUSHED message to client = %p\n",
-		   client_ctx);
-	   break;
-	default:
-	   ERR("QVD: vid_enc_output_frame_done invalid cmd type: %d\n", event);
-	   venc_msg->venc_msg_info.statuscode = VEN_S_EFATAL;
-	   break;
+	if (event == VCD_EVT_RESP_OUTPUT_DONE)
+		venc_msg->venc_msg_info.msgcode =
+		VEN_MSG_OUTPUT_BUFFER_DONE;
+
+	else if (event == VCD_EVT_RESP_OUTPUT_FLUSHED)
+		venc_msg->venc_msg_info.msgcode =
+		VEN_MSG_OUTPUT_BUFFER_DONE;
+	else {
+		ERR("QVD: vid_enc_output_frame_done invalid cmd type\n");
+		return;
 	}
 
 	kernel_vaddr =
@@ -416,24 +408,21 @@ static u32 vid_enc_msg_pending(struct video_client_ctx *client_ctx)
 	return !islist_empty;
 }
 
-static int vid_enc_get_next_msg(struct video_client_ctx *client_ctx,
+static u32 vid_enc_get_next_msg(struct video_client_ctx *client_ctx,
 		struct venc_msg *venc_msg_info)
 {
 	int rc;
 	struct vid_enc_msg *vid_enc_msg = NULL;
 
 	if (!client_ctx)
-		return -EIO;
+		return false;
 
 	rc = wait_event_interruptible(client_ctx->msg_wait,
 		vid_enc_msg_pending(client_ctx));
 
-	if (rc < 0) {
-		DBG("rc = %d,stop_msg= %u\n", rc, client_ctx->stop_msg);
-		return rc;
-	} else if (client_ctx->stop_msg) {
-		DBG("stopped stop_msg = %u\n", client_ctx->stop_msg);
-		return -EIO;
+	if (rc < 0 || client_ctx->stop_msg) {
+		DBG("rc = %d, stop_msg = %u\n", rc, client_ctx->stop_msg);
+		return false;
 	}
 
 	mutex_lock(&client_ctx->msg_queue_lock);
@@ -448,7 +437,7 @@ static int vid_enc_get_next_msg(struct video_client_ctx *client_ctx,
 		kfree(vid_enc_msg);
 	}
 	mutex_unlock(&client_ctx->msg_queue_lock);
-	return 0;
+	return true;
 }
 
 static u32 vid_enc_close_client(struct video_client_ctx *client_ctx)
@@ -735,7 +724,6 @@ static int vid_enc_ioctl(struct inode *inode, struct file *file,
 	struct venc_ioctl_msg venc_msg;
 	void __user *arg = (void __user *)u_arg;
 	u32 result = true;
-	int result_read = -1;
 
 	DBG("%s\n", __func__);
 
@@ -752,9 +740,9 @@ static int vid_enc_ioctl(struct inode *inode, struct file *file,
 		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
 			return -EFAULT;
 		DBG("VEN_IOCTL_CMD_READ_NEXT_MSG\n");
-		result_read = vid_enc_get_next_msg(client_ctx, &cb_msg);
-		if (result_read < 0)
-			return result_read;
+		result = vid_enc_get_next_msg(client_ctx, &cb_msg);
+		if (!result)
+			return -EIO;
 		if (copy_to_user(venc_msg.out, &cb_msg, sizeof(cb_msg)))
 			return -EFAULT;
 		break;

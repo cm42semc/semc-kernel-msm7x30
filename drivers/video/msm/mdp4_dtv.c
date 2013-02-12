@@ -1,4 +1,5 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+ * Copyright (C) 2011 Sony Ericsson Mobile Communications AB.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -29,15 +30,19 @@
 #include <linux/uaccess.h>
 #include <linux/clk.h>
 #include <linux/platform_device.h>
+#include <linux/pm_qos_params.h>
 #include <asm/system.h>
 #include <asm/mach-types.h>
 #include <mach/hardware.h>
 #include <mach/msm_reqs.h>
 #include <linux/pm_runtime.h>
-#include <mach/clk.h>
 
 #include "msm_fb.h"
 #include "mdp4.h"
+
+
+#define MSM_AXI_QOS_DTV_ON     192000
+
 
 static int dtv_probe(struct platform_device *pdev);
 static int dtv_remove(struct platform_device *pdev);
@@ -53,7 +58,7 @@ static struct clk *tv_enc_clk;
 static struct clk *tv_dac_clk;
 static struct clk *hdmi_clk;
 static struct clk *mdp_tv_clk;
-
+static unsigned long tv_src_clk_default_rate;
 
 static int mdp4_dtv_runtime_suspend(struct device *dev)
 {
@@ -85,19 +90,12 @@ static struct platform_driver dtv_driver = {
 };
 
 static struct lcdc_platform_data *dtv_pdata;
-#ifdef CONFIG_MSM_BUS_SCALING
-static uint32_t dtv_bus_scale_handle;
-#else
-static struct clk *ebi1_clk;
-#endif
 
 static int dtv_off(struct platform_device *pdev)
 {
-	int ret = 0;
+	int ret = 0, r = 0;
 
 	ret = panel_next_off(pdev);
-
-	pr_info("%s\n", __func__);
 
 	clk_disable(tv_enc_clk);
 	clk_disable(tv_dac_clk);
@@ -110,14 +108,13 @@ static int dtv_off(struct platform_device *pdev)
 
 	if (dtv_pdata && dtv_pdata->lcdc_gpio_config)
 		ret = dtv_pdata->lcdc_gpio_config(0);
-#ifdef CONFIG_MSM_BUS_SCALING
-	if (dtv_bus_scale_handle > 0)
-		msm_bus_scale_client_update_request(dtv_bus_scale_handle,
-							0);
-#else
-	if (ebi1_clk)
-		clk_disable(ebi1_clk);
-#endif
+
+	r = clk_set_rate(tv_src_clk, tv_src_clk_default_rate);
+	pm_qos_update_requirement(PM_QOS_SYSTEM_BUS_FREQ , "dtv",
+					PM_QOS_DEFAULT_VALUE);
+	pr_info("%s: tv_src_clk=%ldkHz, pm_qos_rate=%dkHz, [%d]\n", __func__,
+		tv_src_clk_default_rate/1000, PM_QOS_DEFAULT_VALUE, r);
+
 	mdp4_extn_disp = 0;
 	return ret;
 }
@@ -134,23 +131,13 @@ static int dtv_on(struct platform_device *pdev)
 #ifdef CONFIG_MSM_NPA_SYSTEM_BUS
 	pm_qos_rate = MSM_AXI_FLOW_MDP_DTV_720P_2BPP;
 #else
-	if (panel_pixclock_freq > 58000000)
-		/* pm_qos_rate should be in Khz */
-		pm_qos_rate = panel_pixclock_freq / 1000 ;
-	else
-		pm_qos_rate = 58000;
+	pm_qos_rate = MSM_AXI_QOS_DTV_ON;
 #endif
+
+	pm_qos_update_requirement(PM_QOS_SYSTEM_BUS_FREQ , "dtv",
+						pm_qos_rate);
+	mdp_set_core_clk(1);
 	mdp4_extn_disp = 1;
-#ifdef CONFIG_MSM_BUS_SCALING
-	if (dtv_bus_scale_handle > 0)
-		msm_bus_scale_client_update_request(dtv_bus_scale_handle,
-							1);
-#else
-	if (ebi1_clk) {
-		clk_set_rate(ebi1_clk, pm_qos_rate * 1000);
-		clk_enable(ebi1_clk);
-	}
-#endif
 	mfd = platform_get_drvdata(pdev);
 
 	ret = clk_set_rate(tv_src_clk, mfd->fbi->var.pixclock);
@@ -166,12 +153,7 @@ static int dtv_on(struct platform_device *pdev)
 
 	clk_enable(tv_enc_clk);
 	clk_enable(tv_dac_clk);
-
 	clk_enable(hdmi_clk);
-	clk_reset(hdmi_clk, CLK_RESET_ASSERT);
-	udelay(20);
-	clk_reset(hdmi_clk, CLK_RESET_DEASSERT);
-
 	if (mdp_tv_clk)
 		clk_enable(mdp_tv_clk);
 
@@ -251,24 +233,6 @@ static int dtv_probe(struct platform_device *pdev)
 	fbi->var.hsync_len = mfd->panel_info.lcdc.h_pulse_width;
 	fbi->var.vsync_len = mfd->panel_info.lcdc.v_pulse_width;
 
-#ifdef CONFIG_MSM_BUS_SCALING
-	if (!dtv_bus_scale_handle && dtv_pdata &&
-		dtv_pdata->bus_scale_table) {
-		dtv_bus_scale_handle =
-			msm_bus_scale_register_client(
-					dtv_pdata->bus_scale_table);
-		if (!dtv_bus_scale_handle) {
-			printk(KERN_ERR "%s not able to get bus scale\n",
-				__func__);
-		}
-	}
-#else
-	ebi1_clk = clk_get(NULL, "ebi1_dtv_clk");
-	if (IS_ERR(ebi1_clk)) {
-		ebi1_clk = NULL;
-		pr_warning("%s: Couldn't get ebi1 clock\n", __func__);
-	}
-#endif
 	/*
 	 * set driver data
 	 */
@@ -285,28 +249,17 @@ static int dtv_probe(struct platform_device *pdev)
 	pm_runtime_enable(&pdev->dev);
 
 	pdev_list[pdev_list_cnt++] = pdev;
-	return 0;
+		return 0;
 
 dtv_probe_err:
-#ifdef CONFIG_MSM_BUS_SCALING
-	if (dtv_pdata && dtv_pdata->bus_scale_table &&
-		dtv_bus_scale_handle > 0)
-		msm_bus_scale_unregister_client(dtv_bus_scale_handle);
-#endif
 	platform_device_put(mdp_dev);
 	return rc;
 }
 
 static int dtv_remove(struct platform_device *pdev)
 {
-#ifdef CONFIG_MSM_BUS_SCALING
-	if (dtv_pdata && dtv_pdata->bus_scale_table &&
-		dtv_bus_scale_handle > 0)
-		msm_bus_scale_unregister_client(dtv_bus_scale_handle);
-#else
-	if (ebi1_clk)
-		clk_put(ebi1_clk);
-#endif
+	pm_qos_remove_requirement(PM_QOS_SYSTEM_BUS_FREQ , "dtv");
+
 	pm_runtime_disable(&pdev->dev);
 	return 0;
 }
@@ -336,6 +289,7 @@ static int __init dtv_driver_init(void)
 		pr_info("%s: tv_src_clk not available, using tv_enc_clk"
 			" instead\n", __func__);
 	}
+	tv_src_clk_default_rate = clk_get_rate(tv_src_clk);
 
 	hdmi_clk = clk_get(NULL, "hdmi_clk");
 	if (IS_ERR(hdmi_clk)) {
@@ -346,6 +300,9 @@ static int __init dtv_driver_init(void)
 	mdp_tv_clk = clk_get(NULL, "mdp_tv_clk");
 	if (IS_ERR(mdp_tv_clk))
 		mdp_tv_clk = NULL;
+
+	pm_qos_add_requirement(PM_QOS_SYSTEM_BUS_FREQ , "dtv",
+				PM_QOS_DEFAULT_VALUE);
 
 	return dtv_register_driver();
 }
