@@ -49,7 +49,7 @@
 #include "mdp4.h"
 
 #ifdef CONFIG_FB_MSM_LOGO
-#define INIT_IMAGE_FILE "/initlogo.rle"
+#define INIT_IMAGE_FILE "/logo.rle"
 extern int load_565rle_image(char *filename);
 #endif
 
@@ -322,6 +322,10 @@ static int msm_fb_probe(struct platform_device *pdev)
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 
+	err = pm_runtime_set_active(&pdev->dev);
+	if (err < 0)
+		printk(KERN_ERR "pm_runtime: fail to set active.\n");
+
 	if (!mfd)
 		return -ENODEV;
 
@@ -332,17 +336,15 @@ static int msm_fb_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	mfd->panel_info.frame_count = 0;
-	mfd->bl_level = 0;
+	mfd->bl_level = mfd->panel_info.bl_max;
 #ifdef CONFIG_FB_MSM_OVERLAY
 	mfd->overlay_play_enable = 1;
 #endif
+
 	rc = msm_fb_register(mfd);
 	if (rc)
 		return rc;
-	err = pm_runtime_set_active(mfd->fbi->dev);
-	if (err < 0)
-		printk(KERN_ERR "pm_runtime: fail to set active.\n");
-	pm_runtime_enable(mfd->fbi->dev);
+
 #if 0
 #ifdef CONFIG_FB_BACKLIGHT
 	msm_fb_config_backlight(mfd);
@@ -356,6 +358,8 @@ static int msm_fb_probe(struct platform_device *pdev)
 	}
 #endif
 #endif
+
+	pm_runtime_enable(&pdev->dev);
 
 	pdev_list[pdev_list_cnt++] = pdev;
 	msm_fb_create_sysfs(pdev);
@@ -372,7 +376,7 @@ static int msm_fb_remove(struct platform_device *pdev)
 
 	msm_fb_remove_sysfs(pdev);
 
-	pm_runtime_disable(mfd->fbi->dev);
+	pm_runtime_disable(&pdev->dev);
 
 	if (!mfd)
 		return -ENODEV;
@@ -879,19 +883,6 @@ static struct fb_ops msm_fb_ops = {
 	.fb_mmap = msm_fb_mmap,
 };
 
-static __u32 msm_fb_line_length(__u32 fb_index, __u32 xres, int bpp)
-{
-	/* The adreno GPU hardware requires that the pitch be aligned to
-	   32 pixels for color buffers, so for the cases where the GPU
-	   is writing directly to fb0, the framebuffer pitch
-	   also needs to be 32 pixel aligned */
-
-	if (fb_index == 0)
-		return ALIGN(xres, 32) * bpp;
-	else
-		return xres * bpp;
-}
-
 static int msm_fb_register(struct msm_fb_data_type *mfd)
 {
 	int ret = -ENODEV;
@@ -920,9 +911,20 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	var->yoffset = 0,	/* resolution */
 	var->grayscale = 0,	/* No graylevels */
 	var->nonstd = 0,	/* standard pixel format */
-	var->activate = FB_ACTIVATE_VBL,	/* activate it at vsync */
-	var->height = -1,	/* height of picture in mm */
-	var->width = -1,	/* width of picture in mm */
+	var->activate = FB_ACTIVATE_VBL;	/* activate it at vsync */
+
+	/* height of picture in mm */
+	if (panel_info->height == 0)
+		var->height = -1;
+	else
+		var->height = panel_info->height;
+
+	/* width of picture in mm */
+	if (panel_info->width == 0)
+		var->width = -1;
+	else
+		var->width = panel_info->width;
+
 	var->accel_flags = 0,	/* acceleration flags */
 	var->sync = 0,	/* see FB_SYNC_* */
 	var->rotate = 0,	/* angle we rotate counter clockwise */
@@ -972,16 +974,16 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 		fix->xpanstep = 1;
 		fix->ypanstep = 1;
 		var->vmode = FB_VMODE_NONINTERLACED;
-		var->blue.offset = 0;
-		var->green.offset = 8;
-		var->red.offset = 16;
+		var->blue.offset = 24;
+		var->green.offset = 16;
+		var->red.offset = 8;
 		var->blue.length = 8;
 		var->green.length = 8;
 		var->red.length = 8;
 		var->blue.msb_right = 0;
 		var->green.msb_right = 0;
 		var->red.msb_right = 0;
-		var->transp.offset = 24;
+		var->transp.offset = 0;
 		var->transp.length = 8;
 		bpp = 4;
 		break;
@@ -991,16 +993,16 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 		fix->xpanstep = 1;
 		fix->ypanstep = 1;
 		var->vmode = FB_VMODE_NONINTERLACED;
-		var->blue.offset = 8;
-		var->green.offset = 16;
-		var->red.offset = 24;
+		var->blue.offset = 16;
+		var->green.offset = 8;
+		var->red.offset = 0;
 		var->blue.length = 8;
 		var->green.length = 8;
 		var->red.length = 8;
 		var->blue.msb_right = 0;
 		var->green.msb_right = 0;
 		var->red.msb_right = 0;
-		var->transp.offset = 0;
+		var->transp.offset = 24;
 		var->transp.length = 8;
 		bpp = 4;
 		break;
@@ -1034,21 +1036,19 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 		return ret;
 	}
 
-	fix->type = panel_info->is_3d_panel;
+	/* The adreno GPU hardware requires that the pitch be aligned to
+	   32 pixels for color buffers, so for the cases where the GPU
+	   is writing directly to fb0, the framebuffer pitch
+	   also needs to be 32 pixel aligned */
 
-	fix->line_length = msm_fb_line_length(mfd->index, panel_info->xres,
-					      bpp);
-	/* calculate smem_len based on max size of two supplied modes */
-	fix->smem_len = roundup(MAX(msm_fb_line_length(mfd->index,
-					       panel_info->xres,
-					       bpp) *
-			    panel_info->yres * mfd->fb_page,
-			    msm_fb_line_length(mfd->index,
-					       panel_info->mode2_xres,
-					       bpp) *
-			    panel_info->mode2_yres * mfd->fb_page), PAGE_SIZE);
+	if (mfd->index == 0)
+		fix->line_length = ALIGN(panel_info->xres, 32) * bpp;
+	else
+		fix->line_length = panel_info->xres * bpp;
 
+	fix->smem_len = fix->line_length * panel_info->yres * mfd->fb_page;
 
+	fix->smem_len += 128 * 1024;
 
 	mfd->var_xres = panel_info->xres;
 	mfd->var_yres = panel_info->yres;
@@ -1169,7 +1169,12 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	     mfd->index, fbi->var.xres, fbi->var.yres, fbi->fix.smem_len);
 
 #ifdef CONFIG_FB_MSM_LOGO
-	if (!load_565rle_image(INIT_IMAGE_FILE)) ;	/* Flip buffer */
+	if (mfd->index == 0) {
+		if (!load_565rle_image(INIT_IMAGE_FILE)) {
+			msm_fb_open(fbi, 0);
+			msm_fb_pan_display(var, fbi);
+		}	/* Flip buffer */
+	}
 #endif
 	ret = 0;
 
@@ -1443,7 +1448,7 @@ static int msm_fb_pan_display(struct fb_var_screeninfo *var,
 	else
 	{
 		mdp_set_dma_pan_info(info, dirtyPtr,
-			     	(var->activate == FB_ACTIVATE_VBL));
+					(var->activate == FB_ACTIVATE_VBL));
 	}
 	mdp_dma_pan_update(info);
 	up(&msm_fb_pan_sem);
@@ -1506,14 +1511,14 @@ static int msm_fb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 		   and verify the position of the RGB components */
 
 		if (var->transp.offset == 24) {
-			if ((var->blue.offset != 0) ||
+			if ((var->blue.offset != 16) ||
 			    (var->green.offset != 8) ||
-			    (var->red.offset != 16))
+			    (var->red.offset != 0))
 				return -EINVAL;
 		} else if (var->transp.offset == 0) {
-			if ((var->blue.offset != 8) ||
+			if ((var->blue.offset != 24) ||
 			    (var->green.offset != 16) ||
-			    (var->red.offset != 24))
+			    (var->red.offset != 8))
 				return -EINVAL;
 		} else
 			return -EINVAL;
@@ -1545,10 +1550,8 @@ static int msm_fb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	if ((var->xres == 0) || (var->yres == 0))
 		return -EINVAL;
 
-	if ((var->xres > MAX(mfd->panel_info.xres,
-			     mfd->panel_info.mode2_xres)) ||
-		(var->yres > MAX(mfd->panel_info.yres,
-				 mfd->panel_info.mode2_yres)))
+	if ((var->xres > mfd->panel_info.xres) ||
+		(var->yres > mfd->panel_info.yres))
 		return -EINVAL;
 
 	if (var->xoffset > (var->xres_virtual - var->xres))
@@ -1587,7 +1590,7 @@ static int msm_fb_set_par(struct fb_info *info)
 		break;
 
 	case 32:
-		if (var->transp.offset == 24)
+		if (var->transp.offset == 0)
 			mfd->fb_imgType = MDP_ARGB_8888;
 		else
 			mfd->fb_imgType = MDP_RGBA_8888;
@@ -1607,8 +1610,6 @@ static int msm_fb_set_par(struct fb_info *info)
 		mfd->var_pixclock = var->pixclock;
 		blank = 1;
 	}
-	mfd->fbi->fix.line_length = msm_fb_line_length(mfd->index, var->xres,
-						       var->bits_per_pixel/8);
 
 	if (blank) {
 		msm_fb_blank_sub(FB_BLANK_POWERDOWN, info, mfd->op_enable);
@@ -1822,8 +1823,7 @@ int mdp_blit(struct fb_info *info, struct mdp_blit_req *req)
 #if defined CONFIG_FB_MSM_MDP31
 	/* MDP width split workaround */
 	remainder = (req->dst_rect.w)%32;
-	ret = mdp_get_bytes_per_pixel(req->dst.format,
-					(struct msm_fb_data_type *)info->par);
+	ret = mdp_get_bytes_per_pixel(req->dst.format);
 	if (ret <= 0) {
 		printk(KERN_ERR "mdp_ppp: incorrect bpp!\n");
 		return -EINVAL;
@@ -1985,8 +1985,7 @@ int mdp_blit(struct fb_info *info, struct mdp_blit_req *req)
 #elif defined CONFIG_FB_MSM_MDP30
 	/* MDP width split workaround */
 	remainder = (req->dst_rect.w)%16;
-	ret = mdp_get_bytes_per_pixel(req->dst.format,
-					(struct msm_fb_data_type *)info->par);
+	ret = mdp_get_bytes_per_pixel(req->dst.format);
 	if (ret <= 0) {
 		printk(KERN_ERR "mdp_ppp: incorrect bpp!\n");
 		return -EINVAL;
@@ -2003,8 +2002,10 @@ int mdp_blit(struct fb_info *info, struct mdp_blit_req *req)
 		d_h_0 = d_h_1 = req->dst_rect.h;
 		d_x_0 = req->dst_rect.x;
 
-		if (remainder == 14 || remainder == 6)
-			d_w_1 = req->dst_rect.w / 2;
+		if (remainder == 14)
+			d_w_1 = (req->dst_rect.w - 14) / 2 + 4;
+		else if (remainder == 6)
+			d_w_1 = req->dst_rect.w / 2 - 1;
 		else
 			d_w_1 = (req->dst_rect.w - 1) / 2 - 1;
 
