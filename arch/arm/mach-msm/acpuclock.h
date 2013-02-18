@@ -26,8 +26,6 @@ enum setrate_reason {
 	SETRATE_CPUFREQ = 0,
 	SETRATE_SWFI,
 	SETRATE_PC,
-	SETRATE_HOTPLUG,
-	SETRATE_INIT,
 };
 
 int acpuclk_set_rate(int cpu, unsigned long rate, enum setrate_reason reason);
