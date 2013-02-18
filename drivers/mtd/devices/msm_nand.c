@@ -42,6 +42,7 @@ unsigned long msm_nandc11_phys;
 unsigned long ebi2_register_base;
 uint32_t dual_nand_ctlr_present;
 uint32_t interleave_enable;
+unsigned crci_mask;
 
 #define MSM_NAND_DMA_BUFFER_SIZE SZ_8K
 #define MSM_NAND_DMA_BUFFER_SLOTS \
@@ -255,7 +256,7 @@ unsigned flash_rd_reg(struct msm_nand_chip *chip, unsigned addr)
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(
-		chip->dma_channel,  DMOV_CMD_PTR_LIST |
+		chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
@@ -291,7 +292,7 @@ void flash_wr_reg(struct msm_nand_chip *chip, unsigned addr, unsigned val)
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(
-		chip->dma_channel,  DMOV_CMD_PTR_LIST |
+		chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
@@ -378,7 +379,7 @@ uint32_t flash_read_id(struct msm_nand_chip *chip)
 
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
-	msm_dmov_exec_cmd(chip->dma_channel,  DMOV_CMD_PTR_LIST |
+	msm_dmov_exec_cmd(chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
@@ -684,7 +685,7 @@ uint32_t flash_onfi_probe(struct msm_nand_chip *chip)
 				>> 3) | CMD_PTR_LP;
 
 		dsb();
-		msm_dmov_exec_cmd(chip->dma_channel, 
+		msm_dmov_exec_cmd(chip->dma_channel, crci_mask,
 			DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 			&dma_buffer->cmdptr)));
 		dsb();
@@ -1072,7 +1073,7 @@ static int msm_nand_read_oob(struct mtd_info *mtd, loff_t from,
 			| CMD_PTR_LP;
 
 		dsb();
-		msm_dmov_exec_cmd(chip->dma_channel, 
+		msm_dmov_exec_cmd(chip->dma_channel, crci_mask,
 			DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 			&dma_buffer->cmdptr)));
 		dsb();
@@ -1844,7 +1845,7 @@ static int msm_nand_read_oob_dualnandc(struct mtd_info *mtd, loff_t from,
 			| CMD_PTR_LP;
 
 		dsb();
-		msm_dmov_exec_cmd(chip->dma_channel, 
+		msm_dmov_exec_cmd(chip->dma_channel, crci_mask,
 			DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 			&dma_buffer->cmdptr)));
 		dsb();
@@ -2310,7 +2311,7 @@ msm_nand_write_oob(struct mtd_info *mtd, loff_t to, struct mtd_oob_ops *ops)
 			CMD_PTR_LP;
 
 		dsb();
-		msm_dmov_exec_cmd(chip->dma_channel, 
+		msm_dmov_exec_cmd(chip->dma_channel, crci_mask,
 			DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(
 				msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 		dsb();
@@ -2901,7 +2902,7 @@ msm_nand_write_oob_dualnandc(struct mtd_info *mtd, loff_t to,
 		((msm_virt_to_dma(chip, dma_buffer->cmd) >> 3) | CMD_PTR_LP);
 
 		dsb();
-		msm_dmov_exec_cmd(chip->dma_channel, 
+		msm_dmov_exec_cmd(chip->dma_channel, crci_mask,
 			DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(
 				msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 		dsb();
@@ -3091,7 +3092,7 @@ msm_nand_erase(struct mtd_info *mtd, struct erase_info *instr)
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(
-		chip->dma_channel,  DMOV_CMD_PTR_LIST |
+		chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
@@ -3297,7 +3298,7 @@ msm_nand_erase_dualnandc(struct mtd_info *mtd, struct erase_info *instr)
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(
-		chip->dma_channel,  DMOV_CMD_PTR_LIST |
+		chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
@@ -3433,7 +3434,7 @@ msm_nand_block_isbad_singlenandc(struct mtd_info *mtd, loff_t ofs)
 
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
-	msm_dmov_exec_cmd(chip->dma_channel,  DMOV_CMD_PTR_LIST |
+	msm_dmov_exec_cmd(chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
@@ -3683,7 +3684,7 @@ msm_nand_block_isbad_dualnandc(struct mtd_info *mtd, loff_t ofs)
 
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
-	msm_dmov_exec_cmd(chip->dma_channel,  DMOV_CMD_PTR_LIST |
+	msm_dmov_exec_cmd(chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
@@ -3944,7 +3945,7 @@ uint32_t flash_onenand_probe(struct msm_nand_chip *chip)
 
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
-	msm_dmov_exec_cmd(chip->dma_channel,  DMOV_CMD_PTR_LIST
+	msm_dmov_exec_cmd(chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST
 			| DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 			&dma_buffer->cmdptr)));
 	dsb();
@@ -4575,7 +4576,7 @@ int msm_onenand_read_oob(struct mtd_info *mtd,
 
 		pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 		dsb();
-		msm_dmov_exec_cmd(chip->dma_channel, 
+		msm_dmov_exec_cmd(chip->dma_channel, crci_mask,
 			DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 				&dma_buffer->cmdptr)));
 		dsb();
@@ -5323,7 +5324,7 @@ static int msm_onenand_write_oob(struct mtd_info *mtd, loff_t to,
 
 		pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 		dsb();
-		msm_dmov_exec_cmd(chip->dma_channel, 
+		msm_dmov_exec_cmd(chip->dma_channel, crci_mask,
 			DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 				&dma_buffer->cmdptr)));
 		dsb();
@@ -5748,7 +5749,7 @@ static int msm_onenand_erase(struct mtd_info *mtd, struct erase_info *instr)
 
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
-	msm_dmov_exec_cmd(chip->dma_channel,  DMOV_CMD_PTR_LIST
+	msm_dmov_exec_cmd(chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST
 			| DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 			&dma_buffer->cmdptr)));
 	dsb();
@@ -6214,7 +6215,7 @@ static int msm_onenand_unlock(struct mtd_info *mtd, loff_t ofs, uint64_t len)
 
 		pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 		dsb();
-		msm_dmov_exec_cmd(chip->dma_channel, 
+		msm_dmov_exec_cmd(chip->dma_channel, crci_mask,
 			DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 				&dma_buffer->cmdptr)));
 		dsb();
@@ -6580,7 +6581,7 @@ static int msm_onenand_lock(struct mtd_info *mtd, loff_t ofs, uint64_t len)
 
 		pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 		dsb();
-		msm_dmov_exec_cmd(chip->dma_channel, 
+		msm_dmov_exec_cmd(chip->dma_channel, crci_mask,
 			DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 				&dma_buffer->cmdptr)));
 		dsb();
@@ -6882,7 +6883,7 @@ static int msm_nand_nc10_xfr_settings(struct mtd_info *mtd)
 
 	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
-	msm_dmov_exec_cmd(chip->dma_channel,  DMOV_CMD_PTR_LIST
+	msm_dmov_exec_cmd(chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST
 			| DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 			&dma_buffer->cmdptr)));
 	dsb();
@@ -7010,6 +7011,9 @@ no_dual_nand_ctlr_support:
 
 	pr_info("%s: allocated dma buffer at %p, dma_addr %x\n",
 		__func__, info->msm_nand.dma_buffer, info->msm_nand.dma_addr);
+
+	crci_mask = msm_dmov_build_crci_mask(2,
+			DMOV_NAND_CRCI_DATA, DMOV_NAND_CRCI_CMD);
 
 	info->mtd.name = dev_name(&pdev->dev);
 	info->mtd.priv = &info->msm_nand;
