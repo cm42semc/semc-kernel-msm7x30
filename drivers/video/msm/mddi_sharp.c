@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2010, 2012 Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2008-2010, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -753,7 +753,7 @@ static int mddi_sharp_lcd_off(struct platform_device *pdev)
 	return 0;
 }
 
-static int __init mddi_sharp_probe(struct platform_device *pdev)
+static int __devinit mddi_sharp_probe(struct platform_device *pdev)
 {
 	if (pdev->id == 0) {
 		mddi_sharp_pdata = pdev->dev.platform_data;
@@ -860,7 +860,6 @@ static int __init mddi_sharp_init(void)
 		pinfo->clk_min = 120000000;
 		pinfo->clk_max = 125000000;
 		pinfo->lcd.vsync_enable = TRUE;
-		pinfo->mddi.is_type1 = TRUE;
 		pinfo->lcd.refx100 =
 			(mddi_sharp_rows_per_second * 100) /
 			mddi_sharp_rows_per_refresh;
