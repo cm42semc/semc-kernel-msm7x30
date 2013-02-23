@@ -60,6 +60,7 @@ enum vcd_frame {
 	VCD_FRAME_P,
 	VCD_FRAME_B,
 	VCD_FRAME_NOTCODED,
+	VCD_FRAME_IDR,
 	VCD_FRAME_32BIT = 0x7fffffff
 };
 
