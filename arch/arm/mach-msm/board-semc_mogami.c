@@ -19,6 +19,7 @@
 #include <linux/kernel.h>
 #include <linux/irq.h>
 #include <linux/gpio.h>
+#include <linux/gpio_event.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/bootmem.h>
@@ -46,6 +47,7 @@
 #include <asm/setup.h>
 
 #include <mach/mpp.h>
+#include <mach/gpio.h>
 #include <mach/board.h>
 #include <mach/camera.h>
 #include <mach/memory.h>
@@ -798,9 +800,6 @@ struct resource msm_camera_resources[] = {
 		.end	= INT_VFE,
 		.flags	= IORESOURCE_IRQ,
 	},
-	{
-		.flags  = IORESOURCE_DMA,
-	}
 };
 
 struct msm_camera_device_platform_data msm_camera_device_data = {
@@ -974,6 +973,7 @@ static struct platform_device msm_vpe_standalone_device = {
        .resource = msm_vpe_resources,
 };
 #endif
+
 #ifdef CONFIG_MSM7KV2_AUDIO
 static uint32_t audio_pamp_gpio_config =
    GPIO_CFG(SPEAKER_POWERAMP_GPIO, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA);
@@ -1085,7 +1085,6 @@ void msm_snddev_hsed_voltage_off(void)
 		pr_err("%s: vreg_disable(gp4) failed (%d)\n", __func__, rc);
 
 	vreg_put(snddev_vreg_gp4);
-
 }
 
 static unsigned aux_pcm_gpio_on[] = {
@@ -1152,19 +1151,14 @@ int  mi2s_unconfig_data_gpio(u32 direction, u8 sd_line_mask)
 
 	switch (direction) {
 	case DIR_TX:
-		msm_gpios_enable(mi2s_tx_data_lines_gpios, 1);
-		msm_gpios_free(mi2s_tx_data_lines_gpios, 1);
+		msm_gpios_disable_free(mi2s_tx_data_lines_gpios, 1);
 		break;
 	case DIR_RX:
 		i = 0;
-		while (sd_line_mask &&
-		      (i < ARRAY_SIZE(mi2s_rx_data_lines_gpios))) {
-			if (sd_line_mask & 0x1) {
-				msm_gpios_enable(
+		while (sd_line_mask) {
+			if (sd_line_mask & 0x1)
+				msm_gpios_disable_free(
 					mi2s_rx_data_lines_gpios + i , 1);
-				msm_gpios_free(
-					mi2s_rx_data_lines_gpios + i , 1);
-			}
 			sd_line_mask = sd_line_mask >> 1;
 			i++;
 		}
