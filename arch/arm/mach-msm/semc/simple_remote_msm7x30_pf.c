@@ -46,9 +46,9 @@
 /* Add all includes specifically required by the adaptor here */
 #endif
 
-#include "proc_comm.h"
+#include "../proc_comm.h"
 #include <linux/simple_remote.h>
-#include <mach/simple_remote_msm7x30_pf.h>
+#include <mach/semc/simple_remote_msm7x30_pf.h>
 
 #define HEADSET_BUTTON_ID       0x84
 #define HEADSET_BUTTON_PRESS    0x00

@@ -34,7 +34,7 @@
 #include <asm/mach-types.h>
 #include <mach/msm_rpcrouter.h>
 #include <mach/board.h>
-#include <mach/semc_rpc_server_handset.h>
+#include <mach/semc/semc_rpc_server_handset.h>
 
 /* Defined for RPC connection */
 #define HS_SERVER_PROG 0x30000062

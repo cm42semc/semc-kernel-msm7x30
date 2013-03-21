@@ -1,6 +1,7 @@
 obj-y += io.o dma.o memory.o
 obj-y += clock.o
 obj-y += modem_notifier.o
+obj-$(CONFIG_CPU_FREQ_MSM) += cpufreq.o
 obj-$(CONFIG_DEBUG_FS) += nohlt.o clock-debug.o
 
 obj-$(CONFIG_MSM_PROC_COMM) += proc_comm.o
@@ -139,20 +140,8 @@ obj-$(CONFIG_MACH_MSM8X55_FFA) += board-msm7x30.o
 obj-$(CONFIG_MACH_MSM8X55_SVLTE_FFA) += board-msm7x30.o 
 obj-$(CONFIG_MACH_MSM8X55_SVLTE_SURF) += board-msm7x30.o 
 
-obj-$(CONFIG_MACH_SEMC_MOGAMI) += board-semc_mogami.o board-semc_mogami-rfkill.o keypad-mogami_cdb.o leds-mogami_cdb.o gpio-mogami_cdb.o charger-mogami_cdb.o board-semc_mogami-wifi.o
-obj-$(CONFIG_MACH_SEMC_ANZU) += board-semc_mogami.o board-semc_mogami-rfkill.o keypad-anzu.o leds-anzu.o gpio-anzu.o charger-anzu.o board-semc_mogami-wifi.o
-obj-$(CONFIG_MACH_SEMC_HALLON) += board-semc_mogami.o board-semc_mogami-rfkill.o keypad-hallon.o leds-hallon.o gpio-hallon.o charger-hallon.o fpc_test-hallon.o board-semc_mogami-wifi.o
-obj-$(CONFIG_MACH_SEMC_IYOKAN) += board-semc_mogami.o board-semc_mogami-rfkill.o keypad-iyokan.o leds-iyokan.o gpio-iyokan.o charger-iyokan.o board-semc_mogami-wifi.o touch-iyokan.o
-obj-$(CONFIG_MACH_SEMC_URUSHI) += board-semc_mogami.o board-semc_mogami-rfkill.o keypad-urushi.o leds-urushi.o gpio-urushi.o charger-urushi.o board-semc_mogami-wifi.o
-obj-$(CONFIG_MACH_SEMC_SMULTRON) += board-semc_mogami.o board-semc_mogami-rfkill.o keypad-smultron.o leds-smultron.o gpio-smultron.o charger-smultron.o board-semc_mogami-wifi.o touch-smultron.o
-obj-$(CONFIG_MACH_SEMC_MANGO) += board-semc_mogami.o board-semc_mogami-rfkill.o keypad-mango.o leds-mango.o gpio-mango.o charger-mango.o board-semc_mogami-wifi.o touch-mango.o
-obj-$(CONFIG_MACH_SEMC_COCONUT) += board-semc_mogami.o board-semc_mogami-rfkill.o keypad-coconut.o leds-coconut.o gpio-coconut.o charger-coconut.o board-semc_mogami-wifi.o touch-coconut.o
-obj-$(CONFIG_MACH_SEMC_SATSUMA) += board-semc_mogami.o board-semc_mogami-rfkill.o keypad-satsuma.o leds-satsuma.o gpio-satsuma.o charger-satsuma.o board-semc_mogami-wifi.o touch-satsuma.o
-obj-$(CONFIG_MACH_SEMC_AYAME) += board-semc_mogami.o board-semc_mogami-rfkill.o keypad-anzu.o leds-anzu.o gpio-anzu.o charger-anzu.o board-semc_mogami-wifi.o
-obj-$(CONFIG_MACH_SEMC_HAIDA) += board-semc_mogami.o board-semc_mogami-rfkill.o keypad-haida.o leds-haida.o gpio-haida.o charger-haida.o board-semc_mogami-wifi.o
-obj-$(CONFIG_MOGAMI_VIBRATOR) += vibrator-mogami.o
+obj-y += semc/ # Relevant files for xperia 2011 devices
 
-obj-$(CONFIG_MACH_SEMC_PHOENIX) += board-semc_zeus.o keypad-zeus.o board-semc_zeus-wifi.o board-semc_zeus-rfkill.o
 
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire.o board-sapphire-gpio.o
 obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-keypad.o board-sapphire-panel.o
@@ -184,18 +173,7 @@ endif
 
 obj-$(CONFIG_MSM7200A_TLMM)	+= tlmm-msm7200a.o
 obj-$(CONFIG_MSM8660_TLMM)	+= tlmm-msm8660.o msm8660-gpio.o
-obj-$(CONFIG_SEMC_RPC_SERVER_HANDSET) += semc_rpc_server_handset.o
 obj-$(CONFIG_ARCH_MSM7X27)	+= gpiomux.o gpiomux-7x00.o gpiomux-7x27.o
 obj-$(CONFIG_ARCH_MSM7X30)	+= gpiomux.o gpiomux-7x00.o gpiomux-7x30.o
 obj-$(CONFIG_ARCH_QSD8X50)	+= gpiomux.o gpiomux-7x00.o gpiomux-8x50.o
 obj-$(CONFIG_ARCH_MSM8X60)	+= gpiomux.o gpiomux-8x60.o
-
-ifdef CONFIG_MSM_RPC_OEM_RAPI
-	obj-$(CONFIG_BATTERY_SEMC_ARCH)	+= semc_battery_data.o
-endif
-
-ifdef CONFIG_ARCH_MSM7X30
-	obj-$(CONFIG_SIMPLE_REMOTE_PLATFORM) += simple_remote_msm7x30_pf.o
-endif
-
-obj-$(CONFIG_SEMC_MOGAMI_FELICA_SUPPORT) += semc_mogami_felica.o

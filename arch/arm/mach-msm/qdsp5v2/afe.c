@@ -20,7 +20,6 @@
 #include <linux/wait.h>
 #include <linux/sched.h>
 #include <linux/jiffies.h>
-#include <linux/debugfs.h>
 #include <asm/uaccess.h>
 #include <mach/qdsp5v2/qdsp5afecmdi.h>
 #include <mach/qdsp5v2/qdsp5afemsg.h>
@@ -28,7 +27,7 @@
 #include <mach/msm_adsp.h>
 #include <mach/debug_mm.h>
 
-#define AFE_MAX_TIMEOUT 1000 /* 1000 ms */
+#define AFE_MAX_TIMEOUT 500 /* 500 ms */
 #define AFE_MAX_CLNT 6 /* 6 HW path defined so far */
 #define GETDEVICEID(x) ((x) - 1)
 
@@ -41,11 +40,6 @@ struct msm_afe_state {
 	wait_queue_head_t      wait;
 	u8			aux_conf_flag;
 };
-
-#ifdef CONFIG_DEBUG_FS
-static struct dentry *debugfs_afelb;
-#endif
-
 
 static struct msm_afe_state the_afe_state;
 
@@ -379,46 +373,6 @@ int afe_disable(u8 path_id)
 }
 EXPORT_SYMBOL(afe_disable);
 
-
-#ifdef CONFIG_DEBUG_FS
-static int afe_debug_open(struct inode *inode, struct file *file)
-{
-	file->private_data = inode->i_private;
-	MM_INFO("debug intf %s\n", (char *) file->private_data);
-	return 0;
-}
-
-static ssize_t afe_debug_write(struct file *filp,
-	const char __user *ubuf, size_t cnt, loff_t *ppos)
-{
-	char *lb_str = filp->private_data;
-	char cmd;
-
-	if (get_user(cmd, ubuf))
-		return -EFAULT;
-
-	MM_INFO("%s %c\n", lb_str, cmd);
-
-	if (!strcmp(lb_str, "afe_loopback")) {
-		switch (cmd) {
-		case '1':
-			afe_loopback(1);
-			break;
-		case '0':
-			afe_loopback(0);
-			break;
-		}
-	}
-
-	return cnt;
-}
-
-static const struct file_operations afe_debug_fops = {
-	.open = afe_debug_open,
-	.write = afe_debug_write
-};
-#endif
-
 static int __init afe_init(void)
 {
 	struct msm_afe_state *afe = &the_afe_state;
@@ -430,22 +384,12 @@ static int __init afe_init(void)
 	mutex_init(&afe->lock);
 	init_waitqueue_head(&afe->wait);
 
-#ifdef CONFIG_DEBUG_FS
-	debugfs_afelb = debugfs_create_file("afe_loopback",
-	S_IFREG | S_IWUGO, NULL, (void *) "afe_loopback",
-	&afe_debug_fops);
-#endif
-
 	return 0;
 }
 
 static void __exit afe_exit(void)
 {
 	MM_INFO("AFE driver exit\n");
-#ifdef CONFIG_DEBUG_FS
-	if (debugfs_afelb)
-		debugfs_remove(debugfs_afelb);
-#endif
 	if (the_afe_state.mod)
 		msm_adsp_put(the_afe_state.mod);
 	return;

@@ -63,31 +63,31 @@
 #include <mach/qdsp5v2/aux_pcm.h>
 #include <mach/qdsp5v2/mi2s.h>
 #include <mach/qdsp5v2/audio_dev_ctl.h>
-#include <mach/semc_rpc_server_handset.h>
-#include <mach/semc_battery_data.h>
+#include <mach/semc/semc_rpc_server_handset.h>
+#include <mach/semc/semc_battery_data.h>
 #include <mach/msm_tsif.h>
 
 #include <asm/mach/mmc.h>
 #include <asm/mach/flash.h>
 #include <mach/vreg.h>
-#include "devices.h"
-#include "timer.h"
-#include "socinfo.h"
-#include "board-semc_mogami-keypad.h"
-#include "board-semc_mogami-gpio.h"
+#include "../devices.h"
+#include "../timer.h"
+#include <mach/socinfo.h>
+#include <mach/semc/board-semc_mogami-keypad.h>
+#include <mach/semc/board-semc_mogami-gpio.h>
 #include <linux/usb/android.h>
 #ifdef CONFIG_USB_ANDROID_ACCESSORY
 #include <linux/usb/f_accessory.h>
 #endif
-#include "pm.h"
-#include "spm.h"
+#include "../pm.h"
+#include "../spm.h"
 #include <linux/msm_kgsl.h>
 #include <mach/dal_axi.h>
 #include <mach/msm_serial_hs.h>
 #include <mach/msm_reqs.h>
 
 #ifdef CONFIG_MOGAMI_PMIC_KEYPAD
-#include "keypad-pmic-mogami.h"
+#include <mach/semc/keypad-pmic-mogami.h>
 #endif
 
 /* Platform-specific regulator name mappings according to conf. spec. */
@@ -100,8 +100,8 @@
 #include <linux/spi/cy8ctma300_touch.h>
 #endif
 #include <linux/leds-as3676.h>
-#include "board-semc_mogami-leds.h"
-#include "board-semc_mogami-touch.h"
+#include <mach/semc/board-semc_mogami-leds.h>
+#include <mach/semc/board-semc_mogami-touch.h>
 #include <linux/i2c/bq24185_charger.h>
 #include <linux/i2c/bq27520_battery.h>
 #ifdef CONFIG_INPUT_BMA150
@@ -134,7 +134,7 @@
 #include <linux/mddi_auo_s6d05a1_hvga.h>
 #endif
 #ifdef CONFIG_SIMPLE_REMOTE_PLATFORM
-#include <mach/simple_remote_msm7x30_pf.h>
+#include <mach/semc/simple_remote_msm7x30_pf.h>
 #endif
 #ifdef CONFIG_FPC_CONNECTOR_TEST
 #include <linux/fpc_connector_test.h>

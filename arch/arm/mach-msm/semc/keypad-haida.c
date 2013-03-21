@@ -10,7 +10,7 @@
 
 #include <linux/mfd/pmic8058.h>
 #include <linux/input/pmic8058-keypad.h>
-#include "board-semc_mogami-keypad.h"
+#include <mach/semc/board-semc_mogami-keypad.h>
 
 static const unsigned int keymap[] = {
 	KEY(0, 0, KEY_BACK),

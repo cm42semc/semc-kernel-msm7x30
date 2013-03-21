@@ -1,4 +1,4 @@
-/* /kernel/arch/arm/mach-msm/keypad-anzu.c
+/* /kernel/arch/arm/mach-msm/keypad-urushi.c
  *
  * Copyright (C) [2010] Sony Ericsson Mobile Communications AB.
  *
@@ -10,7 +10,7 @@
 
 #include <linux/mfd/pmic8058.h>
 #include <linux/input/pmic8058-keypad.h>
-#include "board-semc_mogami-keypad.h"
+#include <mach/semc/board-semc_mogami-keypad.h>
 
 static const unsigned int keymap[] = {
 	KEY(0, 0, KEY_BACK),
@@ -18,8 +18,6 @@ static const unsigned int keymap[] = {
 	KEY(0, 2, KEY_MENU),
 	KEY(0, 3, KEY_VOLUMEUP),
 	KEY(0, 4, KEY_VOLUMEDOWN),
-	KEY(0, 5, KEY_CAMERA),
-	KEY(0, 6, KEY_CAMERA_FOCUS),
 };
 
 static struct resource resources_keypad[] = {

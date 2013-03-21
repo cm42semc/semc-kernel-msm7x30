@@ -1,4 +1,4 @@
-/* /kernel/arch/arm/mach-msm/keypad-mogami_cdb.c
+/* /kernel/arch/arm/mach-msm/keypad-mango.c
  *
  * Copyright (C) [2010] Sony Ericsson Mobile Communications AB.
  *
@@ -10,17 +10,63 @@
 
 #include <linux/mfd/pmic8058.h>
 #include <linux/input/pmic8058-keypad.h>
-#include "board-semc_mogami-keypad.h"
+#include <mach/semc/board-semc_mogami-keypad.h>
 
 static const unsigned int keymap[] = {
-	KEY(0, 0, KEY_BACK),
-	KEY(0, 1, KEY_HOME),
-	KEY(0, 2, KEY_MENU),
-	KEY(0, 3, KEY_VOLUMEUP),
-	KEY(0, 4, KEY_VOLUMEDOWN),
-	KEY(0, 5, KEY_CAMERA),
-	KEY(0, 6, KEY_CAMERA_FOCUS),
-	KEY(0, 7, KEY_SEARCH),
+	KEY(0, 1, KEY_CAMERA_FOCUS),        /* camera AF */
+	KEY(0, 2, KEY_COMPOSE),         /* Symbol */
+	KEY(0, 3, KEY_SPACE),
+	KEY(0, 4, KEY_ENTER),
+	KEY(0, 5, KEY_DOT),
+	KEY(0, 6, KEY_UP),
+
+	KEY(1, 0, KEY_HOME),
+	KEY(1, 1, KEY_CAMERA),
+	KEY(1, 3, KEY_A),
+	KEY(1, 4, KEY_D),
+	KEY(1, 5, KEY_APOSTROPHE),         /* camera AF */
+	KEY(1, 6, KEY_DOWN),
+
+	KEY(2, 1, KEY_VOLUMEDOWN),
+	KEY(2, 3, KEY_B),
+	KEY(2, 5, KEY_RIGHTBRACE),        /* ?/! */
+	KEY(2, 7, KEY_RIGHT),
+
+	KEY(3, 0, KEY_LEFTSHIFT),
+	KEY(3, 1, KEY_VOLUMEUP),
+	KEY(3, 2, KEY_F),
+	KEY(3, 3, KEY_COMMA),
+	KEY(3, 4, KEY_Z),
+	KEY(3, 5, KEY_E),
+	KEY(3, 7, KEY_LEFT),
+
+	KEY(4, 1, KEY_Q),
+	KEY(4, 3, KEY_R),
+	KEY(4, 4, KEY_C),
+	KEY(4, 5, KEY_T),
+	KEY(4, 6, KEY_LEFTALT),
+	KEY(4, 7, KEY_V),
+
+	KEY(5, 1, KEY_G),
+	KEY(5, 2, KEY_LEFTBRACE),        /* @/& */
+	KEY(5, 4, KEY_Y),
+	KEY(5, 5, KEY_H),
+	KEY(5, 6, KEY_LANGUAGE),        /* language */
+	KEY(5, 7, KEY_X),
+
+	KEY(6, 1, KEY_U),
+	KEY(6, 2, KEY_N),
+	KEY(6, 3, KEY_J),
+	KEY(6, 5, KEY_I),
+	KEY(6, 6, KEY_K),
+	KEY(6, 7, KEY_M),
+
+	KEY(7, 0, KEY_W),
+	KEY(7, 1, KEY_S),
+	KEY(7, 2, KEY_O),
+	KEY(7, 4, KEY_L),
+	KEY(7, 6, KEY_BACKSPACE),
+	KEY(7, 7, KEY_P),
 };
 
 static struct resource resources_keypad[] = {
@@ -44,7 +90,7 @@ static struct matrix_keymap_data keymap_data = {
 static struct pmic8058_keypad_data keypad_data = {
 	.input_name		= PM8058_KEYPAD_DEV,
 	.input_phys_device	= PM8058_KEYPAD_PHYS,
-	.num_rows		= 5,
+	.num_rows		= 8,
 	.num_cols		= 8,
 	.rows_gpio_start	= 8,
 	.cols_gpio_start	= 0,

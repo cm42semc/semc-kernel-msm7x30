@@ -1,4 +1,4 @@
-/* /kernel/arch/arm/mach-msm/keypad-satsuma.c
+/* /kernel/arch/arm/mach-msm/keypad-mogami_cdb.c
  *
  * Copyright (C) [2010] Sony Ericsson Mobile Communications AB.
  *
@@ -10,13 +10,17 @@
 
 #include <linux/mfd/pmic8058.h>
 #include <linux/input/pmic8058-keypad.h>
-#include "board-semc_mogami-keypad.h"
+#include <mach/semc/board-semc_mogami-keypad.h>
 
 static const unsigned int keymap[] = {
+	KEY(0, 0, KEY_BACK),
+	KEY(0, 1, KEY_HOME),
+	KEY(0, 2, KEY_MENU),
 	KEY(0, 3, KEY_VOLUMEUP),
 	KEY(0, 4, KEY_VOLUMEDOWN),
-	KEY(0, 5, KEY_CAMERA_FOCUS),
-	KEY(0, 6, KEY_CAMERA),
+	KEY(0, 5, KEY_CAMERA),
+	KEY(0, 6, KEY_CAMERA_FOCUS),
+	KEY(0, 7, KEY_SEARCH),
 };
 
 static struct resource resources_keypad[] = {
@@ -41,7 +45,7 @@ static struct pmic8058_keypad_data keypad_data = {
 	.input_name		= PM8058_KEYPAD_DEV,
 	.input_phys_device	= PM8058_KEYPAD_PHYS,
 	.num_rows		= 5,
-	.num_cols		= 7,
+	.num_cols		= 8,
 	.rows_gpio_start	= 8,
 	.cols_gpio_start	= 0,
 	.debounce_ms		= {8, 10},
@@ -64,3 +68,4 @@ struct mfd_cell *get_pm8058_keypad_dev(void)
 {
 	return &keypad_dev;
 }
+

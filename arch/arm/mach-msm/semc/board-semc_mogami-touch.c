@@ -1,4 +1,4 @@
-/* /kernel/arch/arm/mach-msm/touch-satsuma.c
+/* /kernel/arch/arm/mach-msm/board-mogami-touch.c
  *
  * Copyright (C) [2010-2011] Sony Ericsson Mobile Communications AB.
  *
@@ -6,6 +6,8 @@
  * it under the terms of the GNU General Public License version 2, as
  * published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
+ *
+ * Changes by irii-soft / iriijo
  */
 
 #include <linux/input.h>
@@ -16,7 +18,9 @@ struct cyttsp_platform_data cyttsp_data = {
 	.wakeup = cyttsp_wakeup,
 	.init = cyttsp_init,
 	.mt_sync = input_mt_sync,
+#ifndef CONFIG_MACH_SEMC_IYOKAN
 	.cust_spec = cyttsp_key_rpc_callback,
+#endif
 	/* TODO: max values should be retrieved from the firmware */
 	.maxx = CONFIG_TOUCHSCREEN_CYTTSP_MAX_X,
 	.maxy = CONFIG_TOUCHSCREEN_CYTTSP_MAX_Y,
@@ -51,6 +55,10 @@ struct cyttsp_platform_data cyttsp_data = {
 	.name = CY_SPI_NAME,
 	.irq_gpio = 42,
 	.reset = cyttsp_xres,
+#ifdef CONFIG_MACH_SEMC_SMULTRON
+	.idac_gain = 4,
+#else
 	.idac_gain = 0,
+#endif
 };
 
