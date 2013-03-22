@@ -142,9 +142,7 @@
 #ifdef CONFIG_TOUCHSCREEN_CLEARPAD
 #include <linux/clearpad.h>
 #endif
-#ifdef CONFIG_SEMC_MOGAMI_FELICA_SUPPORT
-#include <mach/semc_mogami_felica.h>
-#endif
+
 #include <linux/battery_chargalg.h>
 
 #define BQ24185_GPIO_IRQ		(31)
@@ -225,18 +223,6 @@
 #define D_ONESEG_DEVICE_PORT_RESET	38 /* tuner HW reset */
 #define D_ONESEG_DEVICE_PORT_POWER	39 /* tuner power suply reset */
 #endif /* CONFIG_SEMC_ONESEG_TUNER_PM */
-
-#ifdef CONFIG_SEMC_MOGAMI_IRDA
-#include <mach/semc_msm_irda.h>
-#define PM_GPIO_IRDA_M_RX   36
-#define PM_GPIO_IRDA_M_TX   35
-#define PM_GPIO_IRDA_RX1    32
-#define PM_GPIO_IRDA_RX2    33
-#define PM_GPIO_IRDA_RX3    34
-#define PM_GPIO_IRDA_TX1    20
-#define PM_GPIO_IRDA_TX2    21
-#define PM_GPIO_IRDA_TX3    22
-#endif
 
 /* Platform specific HW-ID GPIO mask */
 static const u8 hw_id_gpios[] = {150, 149, 148, 43};
@@ -485,130 +471,6 @@ static struct platform_device semc_rpc_handset_device = {
 	},
 };
 
-#ifdef CONFIG_SEMC_MOGAMI_IRDA
-static struct msm_gpio irda_uart[] = {
-	{ GPIO_CFG(85, 3, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL,
-			GPIO_CFG_2MA), "UART2DM_Rx" },
-	{ GPIO_CFG(87, 3, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-			GPIO_CFG_2MA), "UART2DM_Tx" },
-};
-struct pm8058_gpio pm_irda_m_tx = {
-	.direction      = PM_GPIO_DIR_IN,
-	.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-	.pull           = PM_GPIO_PULL_NO,
-	.vin_sel        = PM_GPIO_VIN_S3,
-	.out_strength   = PM_GPIO_STRENGTH_NO,
-	.function       = PM_GPIO_FUNC_NORMAL,
-};
-struct pm8058_gpio pm_irda_tx = {
-	.direction      = PM_GPIO_DIR_OUT,
-	.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-	.pull           = PM_GPIO_PULL_NO,
-	.vin_sel        = PM_GPIO_VIN_L2,
-	.out_strength   = PM_GPIO_STRENGTH_MED,
-	.function       = PM_GPIO_FUNC_2,
-};
-struct pm8058_gpio pm_irda_m_rx = {
-	.direction      = PM_GPIO_DIR_OUT,
-	.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-	.pull           = PM_GPIO_PULL_NO,
-	.vin_sel        = PM_GPIO_VIN_S3,
-	.out_strength   = PM_GPIO_STRENGTH_MED,
-	.function       = PM_GPIO_FUNC_2,
-};
-struct pm8058_gpio pm_irda_rx = {
-	.direction      = PM_GPIO_DIR_IN,
-	.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-	.pull           = PM_GPIO_PULL_NO,
-	.vin_sel        = PM_GPIO_VIN_L2,
-	.out_strength   = PM_GPIO_STRENGTH_NO,
-	.function       = PM_GPIO_FUNC_NORMAL,
-};
-struct irda_pm_gpio_config {
-	int                gpio;
-	struct pm8058_gpio *param;
-};
-static struct irda_pm_gpio_config irda_pm_gpio[] = {
-	{PM_GPIO_IRDA_TX1, &pm_irda_tx},
-	{PM_GPIO_IRDA_TX3, &pm_irda_tx},
-	{PM_GPIO_IRDA_RX1, &pm_irda_rx},
-	{PM_GPIO_IRDA_RX3, &pm_irda_rx},
-	{PM_GPIO_IRDA_M_TX, &pm_irda_m_tx},
-	{PM_GPIO_IRDA_M_RX, &pm_irda_m_rx},
-};
-
-#define MSM_UART2DM_PHYS      0xA3200000
-#define PMIC_GPIO_IRDA        38
-struct pm8058_gpio g39irda_hig = {
-	.direction      = PM_GPIO_DIR_OUT,
-	.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-	.output_value   = 1,
-	.pull           = PM_GPIO_PULL_NO,
-	.vin_sel        = PM_GPIO_VIN_L7,
-	.out_strength   = PM_GPIO_STRENGTH_MED,
-	.function       = PM_GPIO_FUNC_NORMAL,
-};
-struct pm8058_gpio g39irda_low = {
-	.direction      = PM_GPIO_DIR_OUT,
-	.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-	.output_value   = 0,
-	.pull           = PM_GPIO_PULL_NO,
-	.vin_sel        = PM_GPIO_VIN_L7,
-	.out_strength   = PM_GPIO_STRENGTH_MED,
-	.function       = PM_GPIO_FUNC_NORMAL,
-};
-static int semc_mogami_irda_init(void);
-struct irda_platform_data irda_data = {
-	.gpio_pow       = PMIC_GPIO_IRDA,
-	.gpio_pwcfg_low = &g39irda_low,
-	.gpio_pwcfg_hig = &g39irda_hig,
-	.paddr_uartdm   = MSM_UART2DM_PHYS,
-	.irq_uartdm     = INT_UART2DM_IRQ,
-	.chan_uartdm_tx = DMOV_HSUART2_TX_CHAN,
-	.crci_uartdm_tx = DMOV_HSUART2_TX_CRCI,
-	.chan_uartdm_rx = DMOV_HSUART2_RX_CHAN,
-	.crci_uartdm_rx = DMOV_HSUART2_RX_CRCI,
-	.clk_str        = "uartdm_clk",
-	.clk_dev        = &msm_device_uart_dm2.dev,
-	.gpio_init      = semc_mogami_irda_init,
-};
-static struct platform_device irda_mogami_device = {
-	.name   = "semc-msm-irda",
-	.id = -1,
-	.dev = {
-		.platform_data = &irda_data,
-	},
-};
-
-static int semc_mogami_irda_init(void)
-{
-	unsigned int ret;
-	int i, len;
-
-	ret = 0;
-
-	/* Configure PM8058 GPIO*/
-	len = sizeof(irda_pm_gpio)/sizeof(struct irda_pm_gpio_config);
-	for (i = 0; i < len; i++) {
-		ret = pm8058_gpio_config(irda_pm_gpio[i].gpio,
-						irda_pm_gpio[i].param);
-		if (ret) {
-			pr_err("%s PM_GPIO_IRDA[%d] config failed\n",
-				 __func__, i);
-			return ret;
-		}
-	}
-
-	/* Configure MSM UART2DM GPIO*/
-	ret = msm_gpios_request_enable(irda_uart, ARRAY_SIZE(irda_uart));
-	if (ret) {
-		pr_err("%s enable uart2dm gpios failed\n", __func__);
-		return ret;
-	}
-
-	return 0;
-}
-#endif
 
 static int pm8058_gpios_init(void)
 {
@@ -1330,6 +1192,9 @@ vreg_codec_s4_fail:
 
 static struct marimba_codec_platform_data mariba_codec_pdata = {
 	.marimba_codec_power =  msm_marimba_codec_power,
+#ifdef CONFIG_MARIMBA_CODEC
+	.snddev_profile_init = msm_snddev_init,
+#endif
 };
 
 static struct marimba_platform_data marimba_pdata = {
@@ -3313,6 +3178,11 @@ static struct platform_device msm_fb_device = {
 	}
 };
 
+static struct platform_device msm_migrate_pages_device = {
+	.name   = "msm_migrate_pages",
+	.id     = -1,
+};
+
 static struct android_pmem_platform_data android_pmem_kernel_ebi1_pdata = {
        .name = PMEM_KERNEL_EBI1_DATA_NAME,
 	/* if no allocator_type, defaults to PMEM_ALLOCATORTYPE_BITMAP,
@@ -3330,12 +3200,6 @@ static struct android_pmem_platform_data android_pmem_adsp_pdata = {
        .cached = 0,
 };
 
-static struct android_pmem_platform_data android_pmem_camera_pdata = {
-       .name = "pmem_camera",
-       .allocator_type = PMEM_ALLOCATORTYPE_BITMAP,
-       .cached = 1,
-};
-
 static struct platform_device android_pmem_kernel_ebi1_device = {
        .name = "android_pmem",
        .id = 1,
@@ -3346,12 +3210,6 @@ static struct platform_device android_pmem_adsp_device = {
        .name = "android_pmem",
        .id = 2,
        .dev = { .platform_data = &android_pmem_adsp_pdata },
-};
-
-static struct platform_device android_pmem_camera_device = {
-       .name = "android_pmem",
-       .id = 3,
-       .dev = {.platform_data = &android_pmem_camera_pdata},
 };
 
 struct resource kgsl_3d0_resources[] = {
@@ -3472,7 +3330,6 @@ static int msm_fb_mddi_sel_clk(u32 *clk_rate)
 }
 
 static struct mddi_platform_data mddi_pdata = {
-/*      .mddi_power_save = display_common_power, */
 	.mddi_sel_clk = msm_fb_mddi_sel_clk,
 };
 
@@ -3692,12 +3549,6 @@ static void __init msm_fb_add_devices(void)
 #endif /* CONFIG_FB_MSM_HDMI_SII9024A_PANEL */
 }
 
-#ifdef CONFIG_PMIC_TIME
-static struct platform_device pmic_time_device = {
-	.name = "pmic_time",
-};
-#endif
-
 static struct platform_device *devices[] __initdata = {
 	&msm_device_smd,
 	&msm_device_dmov,
@@ -3720,6 +3571,7 @@ static struct platform_device *devices[] __initdata = {
 #endif
 	&android_pmem_device,
 	&msm_fb_device,
+	&msm_migrate_pages_device,
 #ifdef CONFIG_MSM_ROTATOR
 	&msm_rotator_device,
 #endif
@@ -3729,7 +3581,6 @@ static struct platform_device *devices[] __initdata = {
 #endif /* CONFIG_FB_MSM_HDMI_SII9024A_PANEL */
 	&android_pmem_kernel_ebi1_device,
 	&android_pmem_adsp_device,
-	&android_pmem_camera_device,
 	&msm_device_i2c,
 	&msm_device_i2c_2,
 	&msm_device_uart_dm1,
@@ -3788,20 +3639,11 @@ static struct platform_device *devices[] __initdata = {
 #if defined(CONFIG_FB_MSM_MDDI_AUO_HVGA_LCD)
 	&mddi_auo_hvga_display_device,
 #endif
-#ifdef CONFIG_PMIC_TIME
-	&pmic_time_device,
-#endif /* CONFIG_PMIC_TIME */
 #ifdef CONFIG_FPC_CONNECTOR_TEST
 	&fpc_test_device,
 #endif
 #ifdef CONFIG_SEMC_ONESEG_TUNER_PM
 	&oneseg_tunerpm_device,
-#endif
-#ifdef CONFIG_SEMC_MOGAMI_FELICA_SUPPORT
-	&semc_mogami_felica_device,
-#endif
-#ifdef CONFIG_SEMC_MOGAMI_IRDA
-	&irda_mogami_device,
 #endif
 };
 
@@ -4403,7 +4245,6 @@ static void __init msm7x30_init(void)
 
 #ifdef CONFIG_MSM7KV2_AUDIO
 	snddev_poweramp_gpio_init();
-	msm_snddev_init();
 	aux_pcm_gpio_init();
 #endif
 	hw_id_class_init();

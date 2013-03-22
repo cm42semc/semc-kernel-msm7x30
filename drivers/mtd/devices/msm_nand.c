@@ -1,7 +1,6 @@
 /*
  * Copyright (C) 2007 Google, Inc.
  * Copyright (c) 2008-2010, Code Aurora Forum. All rights reserved.
- * Copyright (C) 2010 Sony Ericsson Mobile Communications AB.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -12,8 +11,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * NOTE: This file has been modified by Sony Ericsson Mobile Communications AB.
- * Modifications are licensed under the License.
  */
 
 #include <linux/kernel.h>
@@ -26,7 +23,6 @@
 #include <linux/io.h>
 #include <linux/crc16.h>
 #include <linux/bitrev.h>
-#include <linux/pm_qos_params.h>
 
 #include <asm/dma.h>
 #include <asm/mach/flash.h>
@@ -68,8 +64,6 @@ unsigned crci_mask;
 #define FLASH_READ_ONFI_PARAMETERS_ADDRESS 0x00
 
 #define VERBOSE 0
-#define MODULE_NAME "msm_nand"
-#define PM_QOS_NO_ISAPC 10
 
 struct msm_nand_chip {
 	struct device *dev;
@@ -253,13 +247,11 @@ unsigned flash_rd_reg(struct msm_nand_chip *chip, unsigned addr)
 		(msm_virt_to_dma(chip, &dma_buffer->cmd) >> 3) | CMD_PTR_LP;
 	dma_buffer->data = 0xeeeeeeee;
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(
 		chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 	rv = dma_buffer->data;
 
@@ -289,13 +281,11 @@ void flash_wr_reg(struct msm_nand_chip *chip, unsigned addr, unsigned val)
 		(msm_virt_to_dma(chip, &dma_buffer->cmd) >> 3) | CMD_PTR_LP;
 	dma_buffer->data = val;
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(
 		chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 	msm_nand_release_dma_buffer(chip, dma_buffer, sizeof(*dma_buffer));
 }
@@ -377,12 +367,10 @@ uint32_t flash_read_id(struct msm_nand_chip *chip)
 	dma_buffer->cmdptr = (msm_virt_to_dma(chip, dma_buffer->cmd) >> 3
 			) | CMD_PTR_LP;
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 	pr_info("status: %x\n", dma_buffer->data[3]);
 	pr_info("nandid: %x maker %02x device %02x\n",
@@ -401,42 +389,20 @@ struct flash_identification {
 	uint32_t pagesize;
 	uint32_t blksize;
 	uint32_t oobsize;
-	uint32_t wr_rd_bsygap;
-	uint32_t recovery_cycles;
-	uint32_t second_bbmarker; /* Bad block marking also on second page */
 };
 
 static struct flash_identification supported_flash[] =
 {
-	/* Flash ID   ID Mask Density(MB)  Wid Pgsz   Blksz   oobsz
-			Bsy  Recov  2nd_bbm    Manuf */
-	{0x00000000, 0xFFFFFFFF,         0, 0,    0,         0,  0,
-			 2,     7,       0 }, /*ONFI*/
-	{0x1500aaec, 0xFF00FFFF, (256<<20), 0, 2048, (2048<<6), 64,
-			 2,     7,       1 }, /*Sams*/
-	{0x5500baec, 0xFF00FFFF, (256<<20), 1, 2048, (2048<<6), 64,
-			 2,     7,       1 }, /*Sams*/
-	{0x6600bcec, 0xFF00FFFF, (512<<20), 1, 4096, (4096<<6), 128,
-			 2,     7,       1 }, /*Sams*/
-	{0x1500aa98, 0xFFFFFFFF, (256<<20), 0, 2048, (2048<<6), 64,
-			 2,     7,       0 }, /*Tosh*/
-	{0x5500ba98, 0xFFFFFFFF, (256<<20), 1, 2048, (2048<<6), 64,
-			 2,     7,       0 }, /*Tosh*/
-	{0xd580b12c, 0xFFFFFFFF, (128<<20), 1, 2048, (2048<<6), 64,
-			 2,     7,       0 }, /*Micr*/
-	{0x5580baad, 0xFFFFFFFF, (256<<20), 1, 2048, (2048<<6), 64,
-			 2,     7,       0 }, /*Hynx*/
-	{0x5510baad, 0xFFFFFFFF, (256<<20), 1, 2048, (2048<<6), 64,
-			 2,     7,       0 }, /*Hynx*/
-	{0x55d1b32c, 0xFFFFFFFF, (1024<<20), 1, 2048, (2048<<6), 64,
-			 9,     6,       0 }, /*Micr*/
-	{0x5591b398, 0xFFFFFFFF, (1024<<20), 1, 2048, (2048<<6), 64,
-			 9,     6,       0 }, /*Tosh*/
-	{0x6600b398, 0x7F00FFFF, (1024<<20), 1, 4096, (4096<<6), 128,
-			 9,     6,       0 }, /*Tosh*/
-	{0x6600b3ec, 0xFF00FFFF, (1024<<20), 1, 4096, (4096<<6), 128,
-			 9,     6,       1 }, /*Sams*/
-
+	/* Flash ID   ID Mask Density(MB)  Wid Pgsz   Blksz   oobsz    Manuf */
+	{0x00000000, 0xFFFFFFFF,         0, 0,    0,         0,  0, }, /*ONFI*/
+	{0x1500aaec, 0xFF00FFFF, (256<<20), 0, 2048, (2048<<6), 64, }, /*Sams*/
+	{0x5500baec, 0xFF00FFFF, (256<<20), 1, 2048, (2048<<6), 64, }, /*Sams*/
+	{0x6600bcec, 0xFF00FFFF, (512<<20), 1, 4096, (4096<<6), 128,}, /*Sams*/
+	{0x1500aa98, 0xFFFFFFFF, (256<<20), 0, 2048, (2048<<6), 64, }, /*Tosh*/
+	{0x5500ba98, 0xFFFFFFFF, (256<<20), 1, 2048, (2048<<6), 64, }, /*Tosh*/
+	{0xd580b12c, 0xFFFFFFFF, (128<<20), 1, 2048, (2048<<6), 64, }, /*Micr*/
+	{0x5580baad, 0xFFFFFFFF, (256<<20), 1, 2048, (2048<<6), 64, }, /*Hynx*/
+	{0x5510baad, 0xFFFFFFFF, (256<<20), 1, 2048, (2048<<6), 64, }, /*Hynx*/
 	/* Note: Width flag is 0 for 8 bit Flash and 1 for 16 bit flash      */
 	/* Note: The First row will be filled at runtime during ONFI probe   */
 };
@@ -535,7 +501,6 @@ uint32_t flash_onfi_probe(struct msm_nand_chip *chip)
 	dma_addr_t dma_addr_identifier = 0;
 	unsigned cmd_set_count = 2;
 	unsigned crc_chk_count = 0;
-	uint8_t index;
 
 	if (msm_nand_data.nr_parts) {
 		page_address = ((msm_nand_data.parts[0]).offset << 6);
@@ -546,7 +511,6 @@ uint32_t flash_onfi_probe(struct msm_nand_chip *chip)
 		return err;
 	}
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	wait_event(chip->wait_queue, (onfi_identifier_buf =
 		msm_nand_get_dma_buffer(chip, ONFI_IDENTIFIER_LENGTH)));
 	dma_addr_identifier = msm_virt_to_dma(chip, onfi_identifier_buf);
@@ -752,24 +716,7 @@ uint32_t flash_onfi_probe(struct msm_nand_chip *chip)
 				supported_flash[0].density  =
 					onfi_param_page_ptr->
 					number_of_blocks_per_logical_unit
-					* onfi_param_page_ptr->
-					number_of_logical_units
 					* supported_flash[0].blksize;
-
-				for (index = 1; index < ARRAY_SIZE(supported_flash); index++) {
-					if ((supported_flash[0].flash_id &
-						  supported_flash[index].mask) ==
-						(supported_flash[index].flash_id &
-						  supported_flash[index].mask)){
-						supported_flash[0].wr_rd_bsygap =
-							supported_flash[index].wr_rd_bsygap;
-						supported_flash[0].recovery_cycles =
-							supported_flash[index].recovery_cycles;
-						supported_flash[0].second_bbmarker =
-							supported_flash[index].second_bbmarker;
-						break;
-					}
-				}
 
 				pr_info("ONFI probe : Found an ONFI "
 					"compliant device %s\n",
@@ -786,7 +733,6 @@ uint32_t flash_onfi_probe(struct msm_nand_chip *chip)
 			}
 		}
 	}
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 	msm_nand_release_dma_buffer(chip, dma_buffer, sizeof(*dma_buffer));
 	msm_nand_release_dma_buffer(chip, onfi_param_info_buf,
@@ -924,7 +870,6 @@ static int msm_nand_read_oob(struct mtd_info *mtd, loff_t from,
 		}
 	}
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	wait_event(chip->wait_queue,
 		   (dma_buffer = msm_nand_get_dma_buffer(
 			    chip, sizeof(*dma_buffer))));
@@ -1115,19 +1060,12 @@ static int msm_nand_read_oob(struct mtd_info *mtd, loff_t from,
 
 			}
 			if (ops->oobbuf) {
-				dma_sync_single_for_cpu(chip->dev,
-				oob_dma_addr_curr - (ops->ooblen - oob_len),
-				ops->ooblen - oob_len, DMA_BIDIRECTIONAL);
 				for (n = 0; n < ops->ooblen; n++) {
 					if (ops->oobbuf[n] != 0xff) {
 						pageerr = rawerr;
 						break;
 					}
 				}
-
-				dma_sync_single_for_device(chip->dev,
-				oob_dma_addr_curr - (ops->ooblen - oob_len),
-				ops->ooblen - oob_len, DMA_BIDIRECTIONAL);
 			}
 		}
 		if (pageerr) {
@@ -1188,7 +1126,6 @@ static int msm_nand_read_oob(struct mtd_info *mtd, loff_t from,
 		pages_read++;
 		page++;
 	}
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 	msm_nand_release_dma_buffer(chip, dma_buffer, sizeof(*dma_buffer));
 
 	if (ops->oobbuf) {
@@ -1350,7 +1287,6 @@ static int msm_nand_read_oob_dualnandc(struct mtd_info *mtd, loff_t from,
 		}
 	}
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	wait_event(chip->wait_queue,
 		   (dma_buffer = msm_nand_get_dma_buffer(
 			    chip, sizeof(*dma_buffer))));
@@ -1887,19 +1823,12 @@ static int msm_nand_read_oob_dualnandc(struct mtd_info *mtd, loff_t from,
 
 			}
 			if (ops->oobbuf) {
-				dma_sync_single_for_cpu(chip->dev,
-				oob_dma_addr_curr - (ops->ooblen - oob_len),
-				ops->ooblen - oob_len, DMA_BIDIRECTIONAL);
 				for (n = 0; n < ops->ooblen; n++) {
 					if (ops->oobbuf[n] != 0xff) {
 						pageerr = rawerr;
 						break;
 					}
 				}
-
-				dma_sync_single_for_device(chip->dev,
-				oob_dma_addr_curr - (ops->ooblen - oob_len),
-				ops->ooblen - oob_len, DMA_BIDIRECTIONAL);
 			}
 		}
 		if (pageerr) {
@@ -1922,7 +1851,7 @@ static int msm_nand_read_oob_dualnandc(struct mtd_info *mtd, loff_t from,
 					total_ecc_errors += ecc_errors;
 					/* not thread safe */
 					mtd->ecc_stats.corrected += ecc_errors;
-					if (ecc_errors > 2)
+					if (ecc_errors > 1)
 						pageerr = -EUCLEAN;
 				}
 			}
@@ -2001,7 +1930,6 @@ static int msm_nand_read_oob_dualnandc(struct mtd_info *mtd, loff_t from,
 		page++;
 	}
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 	msm_nand_release_dma_buffer(chip, dma_buffer, sizeof(*dma_buffer));
 
 	if (ops->oobbuf) {
@@ -2163,7 +2091,6 @@ msm_nand_write_oob(struct mtd_info *mtd, loff_t to, struct mtd_oob_ops *ops)
 	else
 		page_count = ops->len / (mtd->writesize + mtd->oobsize);
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	wait_event(chip->wait_queue, (dma_buffer =
 			msm_nand_get_dma_buffer(chip, sizeof(*dma_buffer))));
 
@@ -2355,7 +2282,6 @@ msm_nand_write_oob(struct mtd_info *mtd, loff_t to, struct mtd_oob_ops *ops)
 
 	ops->oobretlen = ops->ooblen - oob_len;
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 	msm_nand_release_dma_buffer(chip, dma_buffer, sizeof(*dma_buffer));
 
 	if (ops->oobbuf)
@@ -2502,7 +2428,6 @@ msm_nand_write_oob_dualnandc(struct mtd_info *mtd, loff_t to,
 	else
 		page_count = ops->len / (mtd->writesize + mtd->oobsize);
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	wait_event(chip->wait_queue, (dma_buffer =
 			msm_nand_get_dma_buffer(chip, sizeof(*dma_buffer))));
 
@@ -2973,7 +2898,6 @@ msm_nand_write_oob_dualnandc(struct mtd_info *mtd, loff_t to,
 
 	ops->oobretlen = ops->ooblen - oob_len;
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 	msm_nand_release_dma_buffer(chip, dma_buffer, sizeof(*dma_buffer));
 
 	if (ops->oobbuf)
@@ -3089,13 +3013,11 @@ msm_nand_erase(struct mtd_info *mtd, struct erase_info *instr)
 	dma_buffer->cmdptr =
 		(msm_virt_to_dma(chip, dma_buffer->cmd) >> 3) | CMD_PTR_LP;
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(
 		chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 	/* we fail if there was an operation error, a mpu error, or the
 	 * erase success bit was not set.
@@ -3295,13 +3217,11 @@ msm_nand_erase_dualnandc(struct mtd_info *mtd, struct erase_info *instr)
 	dma_buffer->cmdptr =
 		(msm_virt_to_dma(chip, dma_buffer->cmd) >> 3) | CMD_PTR_LP;
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(
 		chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 	/* we fail if there was an operation error, a mpu error, or the
 	 * erase success bit was not set.
@@ -3327,7 +3247,7 @@ msm_nand_erase_dualnandc(struct mtd_info *mtd, struct erase_info *instr)
 }
 
 static int
-msm_nand_block_isbad_singlenandc(struct mtd_info *mtd, loff_t ofs)
+msm_nand_block_isbad(struct mtd_info *mtd, loff_t ofs)
 {
 	struct msm_nand_chip *chip = mtd->priv;
 	int ret;
@@ -3361,6 +3281,15 @@ msm_nand_block_isbad_singlenandc(struct mtd_info *mtd, loff_t ofs)
 		page = ofs >> 12;
 
 	cwperpage = (mtd->writesize >> 9);
+
+	/* Check for invalid offset */
+	if (ofs > mtd->size)
+		return -EINVAL;
+	if (ofs & (mtd->erasesize - 1)) {
+		pr_err("%s: unsupported block address, 0x%x\n",
+			 __func__, (uint32_t)ofs);
+		return -EINVAL;
+	}
 
 	wait_event(chip->wait_queue,
 		(dma_buffer = msm_nand_get_dma_buffer(chip ,
@@ -3432,12 +3361,10 @@ msm_nand_block_isbad_singlenandc(struct mtd_info *mtd, loff_t ofs)
 	dma_buffer->cmdptr = (msm_virt_to_dma(chip,
 				dma_buffer->cmd) >> 3) | CMD_PTR_LP;
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 	ret = 0;
 	if (dma_buffer->data.result.flash_status & 0x110)
@@ -3505,6 +3432,15 @@ msm_nand_block_isbad_dualnandc(struct mtd_info *mtd, loff_t ofs)
 		page = (ofs >> 1) >> 12;
 
 	cwperpage = ((mtd->writesize >> 1) >> 9);
+
+	/* Check for invalid offset */
+	if (ofs > mtd->size)
+		return -EINVAL;
+	if (ofs & (mtd->erasesize - 1)) {
+		pr_err("%s: unsupported block address, 0x%x\n",
+			 __func__, (uint32_t)ofs);
+		return -EINVAL;
+	}
 
 	wait_event(chip->wait_queue,
 		(dma_buffer = msm_nand_get_dma_buffer(chip ,
@@ -3682,12 +3618,10 @@ msm_nand_block_isbad_dualnandc(struct mtd_info *mtd, loff_t ofs)
 	dma_buffer->cmdptr = (msm_virt_to_dma(chip,
 				dma_buffer->cmd) >> 3) | CMD_PTR_LP;
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST |
 		DMOV_CMD_ADDR(msm_virt_to_dma(chip, &dma_buffer->cmdptr)));
 	dsb();
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 	ret = 0;
 	if ((dma_buffer->data.result[0].flash_status & 0x110) ||
@@ -3716,7 +3650,6 @@ msm_nand_block_markbad(struct mtd_info *mtd, loff_t ofs)
 	struct mtd_oob_ops ops;
 	int ret;
 	uint8_t *buf;
-	loff_t max_ofs;
 
 	/* Check for invalid offset */
 	if (ofs > mtd->size)
@@ -3727,65 +3660,22 @@ msm_nand_block_markbad(struct mtd_info *mtd, loff_t ofs)
 		return -EINVAL;
 	}
 
-	ret = 0;
-	if (mtd->second_bbmarker)
-		max_ofs = ofs + mtd->writesize;
-	else
-		max_ofs = ofs;
-
 	/*
-	Write all 0s to the first page (and second if two markers).
+	Write all 0s to the first page
 	This will set the BB marker to 0
 	*/
-	for (; ofs <= max_ofs && ret >= 0; ofs += mtd->writesize) {
-		buf = page_address(ZERO_PAGE());
+	buf = page_address(ZERO_PAGE());
 
-		ops.mode = MTD_OOB_RAW;
-		ops.len = mtd->writesize + mtd->oobsize;
-		ops.retlen = 0;
-		ops.ooblen = 0;
-		ops.oobretlen = 0;
-		ops.ooboffs = 0;
-		ops.datbuf = buf;
-		ops.oobbuf = NULL;
-		if (!interleave_enable)
-			ret =  msm_nand_write_oob(mtd, ofs, &ops);
-		else
-			ret = msm_nand_write_oob_dualnandc(mtd, ofs, &ops);
-	}
-
-	return ret;
-}
-
-static int
-msm_nand_block_isbad(struct mtd_info *mtd, loff_t ofs)
-{
-	int ret;
-	loff_t max_ofs;
-
-	/* Check for invalid offset */
-	if (ofs > mtd->size)
-		return -EINVAL;
-	if (ofs & (mtd->erasesize - 1)) {
-		pr_err("%s: unsupported block address, 0x%x\n",
-			__func__, (uint32_t)ofs);
-		return -EINVAL;
-	}
-
-	ret = 0;
-	if (mtd->second_bbmarker)
-		max_ofs = ofs + mtd->writesize;
+	ops.mode = MTD_OOB_RAW;
+	ops.len = mtd->writesize + mtd->oobsize;
+	ops.retlen = 0;
+	ops.ooblen = 0;
+	ops.datbuf = buf;
+	ops.oobbuf = NULL;
+	if (!interleave_enable)
+		ret =  msm_nand_write_oob(mtd, ofs, &ops);
 	else
-		max_ofs = ofs;
-
-	/* Check if first page (or second if two markers) have bad block
-	* marking. */
-	for (; ofs <= max_ofs && ret == 0; ofs += mtd->writesize) {
-		if (dual_nand_ctlr_present && interleave_enable)
-			ret = msm_nand_block_isbad_dualnandc(mtd, ofs);
-		else
-			ret = msm_nand_block_isbad_singlenandc(mtd, ofs);
-	}
+		ret = msm_nand_write_oob_dualnandc(mtd, ofs, &ops);
 
 	return ret;
 }
@@ -3943,13 +3833,11 @@ uint32_t flash_onenand_probe(struct msm_nand_chip *chip)
 	dma_buffer->cmdptr = (msm_virt_to_dma(chip, dma_buffer->cmd)
 			>> 3) | CMD_PTR_LP;
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST
 			| DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 			&dma_buffer->cmdptr)));
 	dsb();
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 	/* Check for errors, protection violations etc */
 	if (dma_buffer->data.status & 0x110) {
@@ -4574,13 +4462,11 @@ int msm_onenand_read_oob(struct mtd_info *mtd,
 		dma_buffer->cmdptr = (msm_virt_to_dma(chip, dma_buffer->cmd)
 				>> 3) | CMD_PTR_LP;
 
-		pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 		dsb();
 		msm_dmov_exec_cmd(chip->dma_channel, crci_mask,
 			DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 				&dma_buffer->cmdptr)));
 		dsb();
-		pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 		ecc_status = (dma_buffer->data.data3 >> 16) &
 							0x0000FFFF;
@@ -5322,13 +5208,11 @@ static int msm_onenand_write_oob(struct mtd_info *mtd, loff_t to,
 		dma_buffer->cmdptr = (msm_virt_to_dma(chip, dma_buffer->cmd)
 				>> 3) | CMD_PTR_LP;
 
-		pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 		dsb();
 		msm_dmov_exec_cmd(chip->dma_channel, crci_mask,
 			DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 				&dma_buffer->cmdptr)));
 		dsb();
-		pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 		ecc_status = (dma_buffer->data.data3 >> 16) & 0x0000FFFF;
 		interrupt_status = (dma_buffer->data.data4 >> 0)&0x0000FFFF;
@@ -5747,13 +5631,11 @@ static int msm_onenand_erase(struct mtd_info *mtd, struct erase_info *instr)
 	dma_buffer->cmdptr = (msm_virt_to_dma(chip, dma_buffer->cmd)
 			>> 3) | CMD_PTR_LP;
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST
 			| DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 			&dma_buffer->cmdptr)));
 	dsb();
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 	ecc_status = (dma_buffer->data.data3 >> 16) & 0x0000FFFF;
 	interrupt_status = (dma_buffer->data.data4 >> 0) & 0x0000FFFF;
@@ -6213,13 +6095,11 @@ static int msm_onenand_unlock(struct mtd_info *mtd, loff_t ofs, uint64_t len)
 		dma_buffer->cmdptr = (msm_virt_to_dma(chip, dma_buffer->cmd)
 				>> 3) | CMD_PTR_LP;
 
-		pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 		dsb();
 		msm_dmov_exec_cmd(chip->dma_channel, crci_mask,
 			DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 				&dma_buffer->cmdptr)));
 		dsb();
-		pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 		write_prot_status = (dma_buffer->data.data3 >> 16) & 0x0000FFFF;
 		interrupt_status = (dma_buffer->data.data4 >> 0) & 0x0000FFFF;
@@ -6579,13 +6459,11 @@ static int msm_onenand_lock(struct mtd_info *mtd, loff_t ofs, uint64_t len)
 		dma_buffer->cmdptr = (msm_virt_to_dma(chip, dma_buffer->cmd)
 				>> 3) | CMD_PTR_LP;
 
-		pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 		dsb();
 		msm_dmov_exec_cmd(chip->dma_channel, crci_mask,
 			DMOV_CMD_PTR_LIST | DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 				&dma_buffer->cmdptr)));
 		dsb();
-		pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 
 		write_prot_status = (dma_buffer->data.data3 >> 16) & 0x0000FFFF;
 		interrupt_status = (dma_buffer->data.data4 >> 0) & 0x0000FFFF;
@@ -6699,8 +6577,6 @@ int msm_nand_scan(struct mtd_info *mtd, int maxchips)
 	uint8_t dev_found = 0;
 	uint8_t wide_bus;
 	uint8_t index;
-	uint32_t wr_rd_bsygap;
-	uint32_t recovery_cycle;
 
 	/* Probe the Flash device for ONFI compliance */
 	if (!flash_onfi_probe(chip)) {
@@ -6725,9 +6601,6 @@ int msm_nand_scan(struct mtd_info *mtd, int maxchips)
 		mtd->writesize = supported_flash[index].pagesize * i;
 		mtd->oobsize   = supported_flash[index].oobsize  * i;
 		mtd->erasesize = supported_flash[index].blksize  * i;
-		wr_rd_bsygap   = supported_flash[index].wr_rd_bsygap;
-		recovery_cycle = supported_flash[index].recovery_cycles;
-		mtd->second_bbmarker = supported_flash[index].second_bbmarker;
 
 		if (!interleave_enable)
 			mtd_writesize = mtd->writesize;
@@ -6742,7 +6615,6 @@ int msm_nand_scan(struct mtd_info *mtd, int maxchips)
 		pr_info("Pagesize : %d Bytes\n", mtd->writesize);
 		pr_info("Erasesize: %d Bytes\n", mtd->erasesize);
 		pr_info("Oobsize  : %d Bytes\n", mtd->oobsize);
-		pr_info("2nd_bbm  : %d\n", mtd->second_bbmarker);
 	} else {
 		pr_err("Unsupported Nand,Id: 0x%x \n", flash_id);
 		return -ENODEV;
@@ -6758,12 +6630,12 @@ int msm_nand_scan(struct mtd_info *mtd, int maxchips)
 		| ((wide_bus) ? (0 << 23) : (1 << 23));
 
 	chip->CFG1 = (0 <<  0)  /* Enable ecc */
-		|    ((recovery_cycle) <<  2)  /* (value+1) recovery cycles */
+		|    (7 <<  2)  /* 8 recovery cycles */
 		|    (0 <<  5)  /* Allow CS deassertion */
 		|  ((mtd_writesize - (528 * ((mtd_writesize >> 9) - 1)) + 1)
 				<<  6)  /* Bad block marker location */
 		|    (0 << 16)  /* Bad block in user data area */
-		|    ((wr_rd_bsygap) << 17)  /* (value+1)x2 clock cycle */
+		|    (2 << 17)  /* 6 cycle tWB/tRB */
 		| (wide_bus << 1); /* Wide flash bit */
 
 	chip->ecc_buf_cfg = 0x203;
@@ -6805,6 +6677,7 @@ int msm_nand_scan(struct mtd_info *mtd, int maxchips)
 		mtd->write_oob = msm_nand_write_oob_dualnandc;
 		if (interleave_enable) {
 			mtd->erase = msm_nand_erase_dualnandc;
+			mtd->block_isbad = msm_nand_block_isbad_dualnandc;
 		}
 	}
 
@@ -6881,13 +6754,11 @@ static int msm_nand_nc10_xfr_settings(struct mtd_info *mtd)
 	dma_buffer->cmdptr = (msm_virt_to_dma(chip, dma_buffer->cmd) >> 3)
 				| CMD_PTR_LP;
 
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_NO_ISAPC);
 	dsb();
 	msm_dmov_exec_cmd(chip->dma_channel, crci_mask, DMOV_CMD_PTR_LIST
 			| DMOV_CMD_ADDR(msm_virt_to_dma(chip,
 			&dma_buffer->cmdptr)));
 	dsb();
-	pm_qos_update_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME, PM_QOS_DEFAULT_VALUE);
 	msm_nand_release_dma_buffer(chip, dma_buffer, sizeof(*dma_buffer));
 	return 0;
 }
@@ -7086,14 +6957,11 @@ MODULE_ALIAS(DRIVER_NAME);
 
 static int __init msm_nand_init(void)
 {
-	pm_qos_add_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME,
-			       PM_QOS_DEFAULT_VALUE);
 	return platform_driver_register(&msm_nand_driver);
 }
 
 static void __exit msm_nand_exit(void)
 {
-	pm_qos_remove_requirement(PM_QOS_CPU_DMA_LATENCY, MODULE_NAME);
 	platform_driver_unregister(&msm_nand_driver);
 }
 
