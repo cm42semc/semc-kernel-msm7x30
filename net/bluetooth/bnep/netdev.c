@@ -26,6 +26,8 @@
 */
 
 #include <linux/module.h>
+#include <linux/interrupt.h>
+#include <linux/slab.h>
 
 #include <linux/socket.h>
 #include <linux/netdevice.h>
@@ -65,6 +67,7 @@ static void bnep_net_set_mc_list(struct net_device *dev)
 	int size;
 
 	BT_DBG("%s mc_count %d", dev->name, dev->mc_count);
+
 
 	size = sizeof(*r) + (BNEP_MAX_MULTICAST_FILTERS + 1) * ETH_ALEN * 2;
 	skb  = alloc_skb(size, GFP_ATOMIC);
@@ -212,7 +215,7 @@ static const struct net_device_ops bnep_netdev_ops = {
 	.ndo_stop            = bnep_net_close,
 	.ndo_start_xmit	     = bnep_net_xmit,
 	.ndo_validate_addr   = eth_validate_addr,
-	.ndo_set_multicast_list = bnep_net_set_mc_list,
+	.ndo_set_rx_mode     = bnep_net_set_mc_list,
 	.ndo_set_mac_address = bnep_net_set_mac_addr,
 	.ndo_tx_timeout      = bnep_net_timeout,
 	.ndo_change_mtu	     = eth_change_mtu,

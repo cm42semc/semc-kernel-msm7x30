@@ -82,8 +82,8 @@
 #define HIDP_BLUETOOTH_VENDOR_ID	9
 
 struct hidp_connadd_req {
-	int   ctrl_sock;	// Connected control socket
-	int   intr_sock;	// Connteted interrupt socket
+	int   ctrl_sock;	/* Connected control socket */
+	int   intr_sock;	/* Connected interrupt socket */
 	__u16 parser;
 	__u16 rd_size;
 	__u8 __user *rd_data;
@@ -154,7 +154,9 @@ struct hidp_session {
 	struct sk_buff_head ctrl_transmit;
 	struct sk_buff_head intr_transmit;
 
-	struct hidp_connadd_req *req;
+	/* Report descriptor */
+	__u8 *rd_data;
+	uint rd_size;
 };
 
 static inline void hidp_schedule(struct hidp_session *session)
