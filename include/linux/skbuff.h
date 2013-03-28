@@ -2085,10 +2085,5 @@ static inline void skb_forward_csum(struct sk_buff *skb)
 }
 
 bool skb_partial_csum_set(struct sk_buff *skb, u16 start, u16 off);
-
-static inline bool skb_has_frag_list(const struct sk_buff *skb)
-{
-         return skb_shinfo(skb)->frag_list != NULL;
-}
 #endif	/* __KERNEL__ */
 #endif	/* _LINUX_SKBUFF_H */

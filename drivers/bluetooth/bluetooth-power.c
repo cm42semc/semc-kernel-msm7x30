@@ -8,6 +8,11 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301, USA.
  */
 /*
  * Bluetooth Power Switch Module
@@ -21,18 +26,13 @@
 #include <linux/platform_device.h>
 #include <linux/rfkill.h>
 
-static bool previous;
-
 static int bluetooth_toggle_radio(void *data, bool blocked)
 {
-	int ret = 0;
+	int ret;
 	int (*power_control)(int enable);
 
 	power_control = data;
-	if (previous != blocked)
-		ret = (*power_control)(!blocked);
-	if (!ret)
-		previous = blocked;
+	ret = (*power_control)(!blocked);
 	return ret;
 }
 
@@ -56,7 +56,6 @@ static int bluetooth_power_rfkill_probe(struct platform_device *pdev)
 
 	/* force Bluetooth off during init to allow for user control */
 	rfkill_init_sw_state(rfkill, 1);
-	previous = 1;
 
 	ret = rfkill_register(rfkill);
 	if (ret) {
@@ -83,7 +82,7 @@ static void bluetooth_power_rfkill_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 }
 
-static int __devinit bt_power_probe(struct platform_device *pdev)
+static int __init bt_power_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 
@@ -104,7 +103,6 @@ static int __devexit bt_power_remove(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
 	bluetooth_power_rfkill_remove(pdev);
-
 	return 0;
 }
 

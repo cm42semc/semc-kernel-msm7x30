@@ -1192,6 +1192,9 @@ vreg_codec_s4_fail:
 
 static struct marimba_codec_platform_data mariba_codec_pdata = {
 	.marimba_codec_power =  msm_marimba_codec_power,
+#ifdef CONFIG_MARIMBA_CODEC
+	.snddev_profile_init = msm_snddev_init,
+#endif
 };
 
 static struct marimba_platform_data marimba_pdata = {
@@ -4242,7 +4245,6 @@ static void __init msm7x30_init(void)
 
 #ifdef CONFIG_MSM7KV2_AUDIO
 	snddev_poweramp_gpio_init();
-	msm_snddev_init();
 	aux_pcm_gpio_init();
 #endif
 	hw_id_class_init();
