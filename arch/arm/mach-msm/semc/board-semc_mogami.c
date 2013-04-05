@@ -1191,7 +1191,7 @@ vreg_codec_s4_fail:
 }
 
 static struct marimba_codec_platform_data mariba_codec_pdata = {
-	.marimba_codec_power =  msm_marimba_codec_powe
+	.marimba_codec_power =  msm_marimba_codec_power,
 };
 
 static struct marimba_platform_data marimba_pdata = {
