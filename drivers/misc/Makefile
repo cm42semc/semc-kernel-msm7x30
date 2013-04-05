@@ -28,7 +28,7 @@ obj-y				+= eeprom/
 obj-y				+= cb710/
 obj-$(CONFIG_WL127X_RFKILL)	+= wl127x-rfkill.o
 obj-$(CONFIG_APANIC)		+= apanic.o
-
+obj-$(CONFIG_TI_ST)             += ti-st/
 obj-$(CONFIG_TSIF) += msm_tsif.o
 msm_tsif-objs := tsif.o
 
