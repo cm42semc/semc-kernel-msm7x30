@@ -1,4 +1,4 @@
-/* /kernel/arch/arm/mach-msm/leds-satsuma.c
+/* /kernel/arch/arm/mach-msm/leds-azusa.c
  *
  * Copyright (C) [2010] Sony Ericsson Mobile Communications AB.
  *
@@ -22,7 +22,12 @@ static struct as3676_platform_led as3676_leds_mapping[] = {
 	},
 	{
 		.name = "button-backlight",
-		.sinks = BIT(AS3676_SINK_RGB2),
+		.sinks = BIT(AS3676_SINK_RGB1) | BIT(AS3676_SINK_RGB2),
+		.max_current = 25000,
+	},
+	{
+		.name = "tally-light",
+		.sinks = BIT(AS3676_SINK_RGB3),
 		.max_current = 25000,
 	},
 	{
@@ -49,6 +54,7 @@ struct as3676_platform_data as3676_platform_data = {
 	.leds = as3676_leds_mapping,
 	.num_leds = ARRAY_SIZE(as3676_leds_mapping),
 	.als_connected = 1,
-	.dls_connected = true,
-	.ldo_mV = 3000,
+	.als_wait = 100,
+	.dls_connected = false,
+	.ldo_mV = 3300,
 };
